@@ -1,6 +1,7 @@
 # Danger PR Comment
 
 [![Test](https://github.com/numbata/danger-pr-comment/actions/workflows/test.yml/badge.svg)](https://github.com/numbata/danger-pr-comment/actions/workflows/test.yml)
+[![Coverage Status](https://coveralls.io/repos/github/numbata/danger-pr-comment/badge.svg?branch=main)](https://coveralls.io/github/numbata/danger-pr-comment?branch=main)
 
 Reusable GitHub Actions workflows for running Danger and posting a PR comment from a JSON report.
 
