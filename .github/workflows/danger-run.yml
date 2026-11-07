@@ -8,6 +8,11 @@ on:
         required: false
         type: string
         default: ""
+      gemfile:
+        description: "Gemfile path for Bundler. Leave empty to use the repository's default Gemfile."
+        required: false
+        type: string
+        default: Gemfile
       bundler-cache:
         description: "Use bundler-cache in ruby/setup-ruby."
         required: false
@@ -35,6 +40,8 @@ permissions:
 jobs:
   danger:
     runs-on: ubuntu-latest
+    env:
+      BUNDLE_GEMFILE: ${{ inputs.gemfile }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

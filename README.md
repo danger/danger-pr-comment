@@ -173,6 +173,7 @@ The `Danger Comment` workflow requires explicit permissions. Reusable workflows 
 #### `danger-run.yml`
 
 - `ruby-version`: Ruby version for `ruby/setup-ruby`. Leave empty to use `.ruby-version`/`.tool-versions`.
+- `gemfile`: Gemfile path for Bundler (default `Gemfile`), for example `gemfiles/danger.gemfile`.
 - `bundler-cache`: Enable Bundler caching (default `true`).
 - `danger-args`: Arguments passed to `bundle exec danger` (default `dry_run`).
 - `report-artifact-name`: Artifact name for the report (default `danger-report`).
