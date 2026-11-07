@@ -19,4 +19,6 @@ group :test do
   # Temporary until Danger's git 6 support lands: https://github.com/danger/danger/pull/1561
   gem 'git', '< 6', require: false
   gem 'rspec'
+  gem 'simplecov', require: false
+  gem 'simplecov-lcov', require: false
 end
