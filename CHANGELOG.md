@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-07
+
 ### Added
 
 - [#14](https://github.com/numbata/danger-pr-comment/pull/14): Add SimpleCov coverage reporting to Coveralls - [@dblock](https://github.com/dblock).

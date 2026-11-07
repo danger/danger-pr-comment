@@ -85,7 +85,7 @@ on:
 
 jobs:
   danger:
-    uses: numbata/danger-pr-comment/.github/workflows/danger-run.yml@v0.1.1
+    uses: numbata/danger-pr-comment/.github/workflows/danger-run.yml@v0.2.0
     secrets: inherit
     with:
       ruby-version: '3.4'
@@ -108,7 +108,7 @@ permissions:
 
 jobs:
   comment:
-    uses: numbata/danger-pr-comment/.github/workflows/danger-comment.yml@v0.1.1
+    uses: numbata/danger-pr-comment/.github/workflows/danger-comment.yml@v0.2.0
     secrets: inherit
 ```
 
