@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- [#15](https://github.com/numbata/danger-pr-comment/pull/15): Migrate release automation to [ruby-gem-release](https://github.com/dblock/ruby-gem-release) 0.4.0, preserving release access restrictions and workflow reference updates while allowing unpublished maintenance versions below the latest release - [@dblock](https://github.com/dblock).
+
 ## [0.2.0] - 2026-11-07
 
 ### Added

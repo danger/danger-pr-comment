@@ -1,3 +1,5 @@
 Gemfile.lock
+.bundle/
+vendor/bundle/
 spec/.rspec_status
 coverage/

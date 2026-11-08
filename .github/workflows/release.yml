@@ -8,165 +8,35 @@ on:
         required: false
         type: string
 
-concurrency:
-  group: release
-  cancel-in-progress: false
+permissions:
+  contents: write
+  id-token: write
 
 jobs:
-  release:
+  authorize:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    environment: release
+    outputs:
+      actor: ${{ github.triggering_actor }}
     permissions:
-      contents: write
-      id-token: write
-
+      contents: read
     steps:
     - name: Verify the actor may release
       env:
         RELEASERS: ${{ vars.RELEASERS }}
         ACTOR: ${{ github.triggering_actor }}
       run: |
+        shopt -s nocasematch
         for user in $RELEASERS; do
-          if [ "${user,,}" = "${ACTOR,,}" ]; then exit 0; fi
+          if [[ "$user" == "$ACTOR" ]]; then exit 0; fi
         done
         echo "::error::$ACTOR is not listed in the RELEASERS repository variable."
         exit 1
 
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Verify release commit is current
-      run: |
-        git fetch origin main
-        if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
-          echo "::error::main has advanced since this run was dispatched. Start a new release run."
-          exit 1
-        fi
-
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.3'
-        bundler-cache: true
-
-    - name: Set requested version
-      if: inputs.version != ''
-      env:
-        REQUESTED_VERSION: ${{ inputs.version }}
-      run: ruby scripts/release_version.rb set "$REQUESTED_VERSION"
-
-    - name: Get version from version.rb
-      id: get_version
-      run: |
-        VERSION=$(ruby scripts/release_version.rb read)
-        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-        echo "Releasing version: $VERSION"
-
-    - name: Configure git
-      run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-
-    - name: Reject a version that already exists
-      env:
-        VERSION: ${{ steps.get_version.outputs.version }}
-      run: |
-        TAG="v$VERSION"
-        if git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null; then
-          echo "::error::Tag $TAG already exists. See RELEASING.md to recover a partial release."
-          exit 1
-        fi
-        CODE=$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "https://rubygems.org/api/v2/rubygems/danger-pr-comment/versions/$VERSION.json")
-        if [ "$CODE" = 200 ]; then
-          echo "::error::Version $VERSION is already published on RubyGems. See RELEASING.md to recover a partial release."
-          exit 1
-        elif [ "$CODE" != 404 ]; then
-          echo "::error::Could not check RubyGems for $VERSION (HTTP $CODE). Retry the run."
-          exit 1
-        fi
-        LATEST=$(git tag --list 'v[0-9]*' | sed 's/^v//' | sort -V | tail -1)
-        if [ -n "$LATEST" ] && [ "$(printf '%s\n%s\n' "$LATEST" "$VERSION" | sort -V | tail -1)" != "$VERSION" ]; then
-          echo "::error::Version $VERSION is not greater than the latest release $LATEST."
-          exit 1
-        fi
-
-    - name: Prepare changelog and workflow references
-      run: ruby scripts/release_version.rb prepare
-
-    - name: Run specs and lint against prepared release
-      run: bundle exec rake
-
-    - name: Commit release preparation locally
-      env:
-        VERSION: ${{ steps.get_version.outputs.version }}
-      run: |
-        git add -u
-        if ! git diff --cached --quiet; then
-          git commit -m "Prepare release $VERSION"
-        fi
-
-    - name: Create git tag
-      run: git tag "v${{ steps.get_version.outputs.version }}"
-
-    - name: Build gem
-      run: |
-        if ! gem build danger-pr-comment.gemspec; then
-          echo "::error::Gem build failed. Review the gemspec and required package files."
-          exit 1
-        fi
-
-    - name: Save prepared source for recovery
-      env:
-        VERSION: ${{ steps.get_version.outputs.version }}
-      run: git bundle create release.bundle "v$VERSION"
-
-    - name: Upload release recovery files
-      uses: actions/upload-artifact@v4
-      with:
-        name: release-v${{ steps.get_version.outputs.version }}
-        path: |
-          release.bundle
-          danger-pr-comment-${{ steps.get_version.outputs.version }}.gem
-        if-no-files-found: error
-
-    - name: Authenticate to RubyGems with trusted publishing
-      uses: rubygems/configure-rubygems-credentials@dc5a8d8553e6ee01fc26761a49e99e733d17954a # v2.1.0
-
-    - name: Push gem to RubyGems
-      env:
-        VERSION: ${{ steps.get_version.outputs.version }}
-      run: |
-        if ! gem push "danger-pr-comment-$VERSION.gem"; then
-          echo "::error::RubyGems upload failed. Check whether the version was published before retrying; no tag or GitHub release has been pushed."
-          exit 1
-        fi
-
-    - name: Push release commit and tag atomically
-      env:
-        VERSION: ${{ steps.get_version.outputs.version }}
-      run: git push --atomic origin HEAD:main "v$VERSION"
-
-    - name: Create GitHub Release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        gh release create "v${{ steps.get_version.outputs.version }}" \
-          --verify-tag \
-          --title "v${{ steps.get_version.outputs.version }}" \
-          --generate-notes \
-          danger-pr-comment-${{ steps.get_version.outputs.version }}.gem
-
-    - name: Increment patch version
-      id: next_version
-      run: |
-        NEXT_VERSION=$(ruby scripts/release_version.rb bump)
-        echo "next_version=$NEXT_VERSION" >> "$GITHUB_OUTPUT"
-        echo "Next development version: $NEXT_VERSION"
-
-    - name: Update version to next development version
-      run: |
-        git add lib/danger-pr-comment/version.rb
-        git commit -m "Bump version to ${{ steps.next_version.outputs.next_version }}"
-        git push origin main
+  release:
+    needs: authorize
+    if: needs.authorize.outputs.actor == github.triggering_actor
+    uses: dblock/ruby-gem-release/.github/workflows/release.yml@v0.4.0
+    with:
+      ruby-version: '3.3'
+      version: ${{ inputs.version }}
