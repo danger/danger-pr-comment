@@ -13,29 +13,8 @@ permissions:
   id-token: write
 
 jobs:
-  authorize:
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    outputs:
-      actor: ${{ github.triggering_actor }}
-    permissions:
-      contents: read
-    steps:
-    - name: Verify the actor may release
-      env:
-        RELEASERS: ${{ vars.RELEASERS }}
-        ACTOR: ${{ github.triggering_actor }}
-      run: |
-        shopt -s nocasematch
-        for user in $RELEASERS; do
-          if [[ "$user" == "$ACTOR" ]]; then exit 0; fi
-        done
-        echo "::error::$ACTOR is not listed in the RELEASERS repository variable."
-        exit 1
-
   release:
-    needs: authorize
-    if: needs.authorize.outputs.actor == github.triggering_actor
+    if: github.ref == 'refs/heads/main'
     uses: dblock/ruby-gem-release/.github/workflows/release.yml@v0.4.0
     with:
       ruby-version: '3.3'
