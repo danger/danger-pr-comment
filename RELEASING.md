@@ -12,8 +12,6 @@ The development dependency and reusable workflow are pinned to `ruby-gem-release
 
 The caller grants `contents: write` and `id-token: write` to the reusable workflow and runs only on `main`. The reusable workflow uses the `release` environment, authenticates through OIDC, and serializes releases. Repository writers can dispatch or rerun the workflow, but required environment reviewers control approval before the release job starts. Without required reviewers, repository writers can publish without maintainer approval. Repository variables are not an independent authorization boundary because writers can edit them.
 
-The old `RELEASERS` repository variable is no longer used and can be deleted with `gh variable delete RELEASERS --repo numbata/danger-pr-comment` after the workflow change is merged.
-
 After verifying trusted publishing works, remove any obsolete `RUBYGEMS_API_KEY` repository secret and revoke its RubyGems API key if it is no longer used elsewhere.
 
 ## Prepare and publish

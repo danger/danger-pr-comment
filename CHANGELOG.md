@@ -10,30 +10,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - [#18](https://github.com/danger/danger-pr-comment/pull/18): Point the README, installer, gemspec, and release tooling at the `danger` organization after the repository transfer - [@numbata](https://github.com/numbata).
-- [#16](https://github.com/numbata/danger-pr-comment/pull/16): Remove the `RELEASERS` allowlist and actor-matching release gate in favor of GitHub environment approval configuration - [@dblock](https://github.com/dblock).
-- [#15](https://github.com/numbata/danger-pr-comment/pull/15): Migrate release automation to [ruby-gem-release](https://github.com/dblock/ruby-gem-release) 0.4.0, preserving release access restrictions and workflow reference updates while allowing unpublished maintenance versions below the latest release - [@dblock](https://github.com/dblock).
+- [#16](https://github.com/danger/danger-pr-comment/pull/16): Remove the `RELEASERS` allowlist and actor-matching release gate in favor of GitHub environment approval configuration - [@dblock](https://github.com/dblock).
+- [#15](https://github.com/danger/danger-pr-comment/pull/15): Migrate release automation to [ruby-gem-release](https://github.com/dblock/ruby-gem-release) 0.4.0, preserving release access restrictions and workflow reference updates while allowing unpublished maintenance versions below the latest release - [@dblock](https://github.com/dblock).
 
 ## [0.2.0] - 2026-11-07
 
 ### Added
 
-- [#14](https://github.com/numbata/danger-pr-comment/pull/14): Add SimpleCov coverage reporting to Coveralls - [@dblock](https://github.com/dblock).
-- [#13](https://github.com/numbata/danger-pr-comment/pull/13): Add a `gemfile` input to the Danger Run workflow for selecting a non-default Gemfile - [@dblock](https://github.com/dblock).
-- [#10](https://github.com/numbata/danger-pr-comment/pull/10): Automate release changelog preparation and update workflow tag references in the README, installer, and installer specs - [@dblock](https://github.com/dblock).
-- [#12](https://github.com/numbata/danger-pr-comment/pull/12): Add a version input and restricted access to the release workflow, and reject versions that already exist - [@numbata](https://github.com/numbata).
+- [#14](https://github.com/danger/danger-pr-comment/pull/14): Add SimpleCov coverage reporting to Coveralls - [@dblock](https://github.com/dblock).
+- [#13](https://github.com/danger/danger-pr-comment/pull/13): Add a `gemfile` input to the Danger Run workflow for selecting a non-default Gemfile - [@dblock](https://github.com/dblock).
+- [#10](https://github.com/danger/danger-pr-comment/pull/10): Automate release changelog preparation and update workflow tag references in the README, installer, and installer specs - [@dblock](https://github.com/dblock).
+- [#12](https://github.com/danger/danger-pr-comment/pull/12): Add a version input and restricted access to the release workflow, and reject versions that already exist - [@numbata](https://github.com/numbata).
 
 ## [0.1.1] - 2026-10-21
 
 ### Added
 
-- [#2](https://github.com/numbata/danger-pr-comment/pull/2): Add automated releases using RubyGems Trusted Publishing, with release validation, GitHub release creation, and next development version preparation - [@dblock](https://github.com/dblock).
-- [#6](https://github.com/numbata/danger-pr-comment/pull/6): Setup danger workflows as an example - [@numbata](https://github.com/numbata).
-- [#1](https://github.com/numbata/danger-pr-comment/pull/1): Add comprehensive test suite with RSpec, Rubocop, and CI - [@dblock](https://github.com/dblock).
-* [#4](https://github.com/numbata/danger-pr-comment/pull/4): Improve install script documentation - [@dblock](https://github.com/dblock).
+- [#2](https://github.com/danger/danger-pr-comment/pull/2): Add automated releases using RubyGems Trusted Publishing, with release validation, GitHub release creation, and next development version preparation - [@dblock](https://github.com/dblock).
+- [#6](https://github.com/danger/danger-pr-comment/pull/6): Setup danger workflows as an example - [@numbata](https://github.com/numbata).
+- [#1](https://github.com/danger/danger-pr-comment/pull/1): Add comprehensive test suite with RSpec, Rubocop, and CI - [@dblock](https://github.com/dblock).
+* [#4](https://github.com/danger/danger-pr-comment/pull/4): Improve install script documentation - [@dblock](https://github.com/dblock).
 
 ### Fixed
 
-- [#7](https://github.com/numbata/danger-pr-comment/pull/7): Add required permissions to workflow examples and templates - [@numbata](https://github.com/numbata).
+- [#7](https://github.com/danger/danger-pr-comment/pull/7): Add required permissions to workflow examples and templates - [@numbata](https://github.com/numbata).
 
 ## [0.1.0] - 2024-01-01
 
