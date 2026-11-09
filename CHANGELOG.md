@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- [#18](https://github.com/danger/danger-pr-comment/pull/18): Point the README, installer, gemspec, and release tooling at the `danger` organization after the repository transfer - [@numbata](https://github.com/numbata).
 - [#16](https://github.com/numbata/danger-pr-comment/pull/16): Remove the `RELEASERS` allowlist and actor-matching release gate in favor of GitHub environment approval configuration - [@dblock](https://github.com/dblock).
 - [#15](https://github.com/numbata/danger-pr-comment/pull/15): Migrate release automation to [ruby-gem-release](https://github.com/dblock/ruby-gem-release) 0.4.0, preserving release access restrictions and workflow reference updates while allowing unpublished maintenance versions below the latest release - [@dblock](https://github.com/dblock).
 

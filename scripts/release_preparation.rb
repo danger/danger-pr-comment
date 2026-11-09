@@ -19,7 +19,7 @@ class ReleaseChangelog < RubyGemRelease::Changelog::KeepAChangelog
 
   def update_references(content, version, path)
     %w[run comment].reduce(content) do |text, workflow|
-      pattern = %r{(numbata/danger-pr-comment/\.github/workflows/danger-#{workflow}\.yml@)(?:v\d+\.\d+\.\d+|main)(?=['"\s]|$)}
+      pattern = %r{(danger/danger-pr-comment/\.github/workflows/danger-#{workflow}\.yml@)(?:v\d+\.\d+\.\d+|main)(?=['"\s]|$)}
       raise "Expected exactly one danger-#{workflow} workflow reference in #{path}" unless text.scan(pattern).one?
 
       text.sub(pattern) { "#{Regexp.last_match(1)}v#{version}" }

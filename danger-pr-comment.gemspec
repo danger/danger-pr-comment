@@ -8,7 +8,7 @@ Gem::Specification.new do |s|
   s.version     = DangerPrComment::VERSION
   s.authors     = ['Andrei Subbota']
   s.email       = ['numbata@users.noreply.github.com']
-  s.homepage    = 'https://github.com/numbata/danger-pr-comment'
+  s.homepage    = 'https://github.com/danger/danger-pr-comment'
   s.summary     = 'Reusable workflows and shared Dangerfile for PR comment reporting.'
   s.description = 'Shared Dangerfile that exports a JSON report for posting Danger results as a PR comment.'
   s.license     = 'MIT'

@@ -1,7 +1,7 @@
 # Danger PR Comment
 
-[![Test](https://github.com/numbata/danger-pr-comment/actions/workflows/test.yml/badge.svg)](https://github.com/numbata/danger-pr-comment/actions/workflows/test.yml)
-[![Coverage Status](https://coveralls.io/repos/github/numbata/danger-pr-comment/badge.svg?branch=main)](https://coveralls.io/github/numbata/danger-pr-comment?branch=main)
+[![Test](https://github.com/danger/danger-pr-comment/actions/workflows/test.yml/badge.svg)](https://github.com/danger/danger-pr-comment/actions/workflows/test.yml)
+[![Coverage Status](https://coveralls.io/repos/github/danger/danger-pr-comment/badge.svg?branch=main)](https://coveralls.io/github/danger/danger-pr-comment?branch=main)
 
 Reusable GitHub Actions workflows for running Danger and posting a PR comment from a JSON report.
 
@@ -58,19 +58,19 @@ Could not find the type of CI for Danger to run on.
 From your repository root:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/numbata/danger-pr-comment/main/scripts/install-workflows.sh | bash
+curl -fsSL https://raw.githubusercontent.com/danger/danger-pr-comment/main/scripts/install-workflows.sh | bash
 ```
 
 Use `--force` to overwrite existing workflow files `.github/workflows/danger.yml` and `.github/workflows/danger-comment.yml`: 
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/numbata/danger-pr-comment/main/scripts/install-workflows.sh | bash -s -- --force
+curl -fsSL https://raw.githubusercontent.com/danger/danger-pr-comment/main/scripts/install-workflows.sh | bash -s -- --force
 ```
 
 To target a specific directory:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/numbata/danger-pr-comment/main/scripts/install-workflows.sh | bash -s -- --root /path/to/repo
+curl -fsSL https://raw.githubusercontent.com/danger/danger-pr-comment/main/scripts/install-workflows.sh | bash -s -- --root /path/to/repo
 ```
 
 ### Manual Setup
@@ -85,7 +85,7 @@ on:
 
 jobs:
   danger:
-    uses: numbata/danger-pr-comment/.github/workflows/danger-run.yml@v0.2.0
+    uses: danger/danger-pr-comment/.github/workflows/danger-run.yml@v0.2.0
     secrets: inherit
     with:
       ruby-version: '3.4'
@@ -108,7 +108,7 @@ permissions:
 
 jobs:
   comment:
-    uses: numbata/danger-pr-comment/.github/workflows/danger-comment.yml@v0.2.0
+    uses: danger/danger-pr-comment/.github/workflows/danger-comment.yml@v0.2.0
     secrets: inherit
 ```
 
