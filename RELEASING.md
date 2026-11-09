@@ -6,12 +6,13 @@ The development dependency and reusable workflow are pinned to `ruby-gem-release
 
 ## One-time setup
 
-1. In the GitHub repository settings, create an environment named `release`. Restrict deployments to `main`. Required reviewers are optional.
+1. In **Settings > Environments**, create an environment named `release` and restrict deployments to `main`. To restrict publication to release maintainers, add `numbata` and `dblock` as required reviewers and disable administrator bypass. Leave **Prevent self-review** unchecked to allow a maintainer to dispatch and approve their own release; enable it if a second maintainer must approve. Configure these protections before relying on maintainer-only publication.
 2. As a gem owner, open [Trusted publishers](https://rubygems.org/gems/danger-pr-comment/trusted_publishers) on RubyGems.org. Configure repository owner `numbata`, repository name `danger-pr-comment`, workflow filename `release.yml`, and environment `release`. Set the separate **workflow repository** fields to owner `dblock` and repository `ruby-gem-release`. Existing publishers must be updated for the reusable workflow; the old standalone-workflow configuration is not sufficient. Use the actual caller owner and repository when publishing from another repository; forks are not automatically trusted.
 3. Ensure branch rules allow the Actions bot to push release preparation and the next development version directly to `main`.
-4. Create a repository variable named `RELEASERS` listing permitted GitHub usernames separated by spaces, for example `gh variable set RELEASERS --body "numbata dblock"`. A missing or empty variable blocks every release.
 
-The caller grants `contents: write` and `id-token: write` to the reusable workflow. The authorization job preserves the `RELEASERS` restriction before invoking it, and the release job must have the same triggering actor as that authorization. A different user must rerun all jobs to be authorized rather than rerunning only a failed release job. The reusable workflow uses the `release` environment, authenticates through OIDC, and serializes releases.
+The caller grants `contents: write` and `id-token: write` to the reusable workflow and runs only on `main`. The reusable workflow uses the `release` environment, authenticates through OIDC, and serializes releases. Repository writers can dispatch or rerun the workflow, but required environment reviewers control approval before the release job starts. Without required reviewers, repository writers can publish without maintainer approval. Repository variables are not an independent authorization boundary because writers can edit them.
+
+The old `RELEASERS` repository variable is no longer used and can be deleted with `gh variable delete RELEASERS --repo numbata/danger-pr-comment` after the workflow change is merged.
 
 After verifying trusted publishing works, remove any obsolete `RUBYGEMS_API_KEY` repository secret and revoke its RubyGems API key if it is no longer used elsewhere.
 
@@ -26,7 +27,7 @@ gh workflow run release.yml --ref main                  # release the version in
 gh workflow run release.yml --ref main -f version=0.3.0 # release an explicit version
 ```
 
-The optional `version` input retains its existing behavior: the library's standard preparation writes the requested MAJOR.MINOR.PATCH version before the reusable workflow verifies it against the prepared gemspec. The version must be absent from RubyGems and its release tag must not already exist. Unpublished maintenance versions below the latest release are allowed; there is no version-ordering restriction. Only users listed in `RELEASERS` may release, even if others have write access. Approve the deployment if the `release` environment requires reviewers.
+The optional `version` input retains its existing behavior: the library's standard preparation writes the requested MAJOR.MINOR.PATCH version before the reusable workflow verifies it against the prepared gemspec. The version must be absent from RubyGems and its release tag must not already exist. Unpublished maintenance versions below the latest release are allowed; there is no version-ordering restriction. A required reviewer must approve the deployment when the `release` environment has approval protection.
 
 The Rakefile installs `ruby-gem-release`'s standard gem workflow without custom task or command overrides. A small Keep a Changelog subclass updates the README, installer, and installer specs to `@vVERSION`, validating every workflow reference before writing release files. Changelog formatting and empty-note validation remain delegated to the library. Do not manually date the changelog or update those references.
 
