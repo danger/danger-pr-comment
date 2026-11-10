@@ -7,12 +7,10 @@ The development dependency and reusable workflow are pinned to `ruby-gem-release
 ## One-time setup
 
 1. In **Settings > Environments**, create an environment named `release` and restrict deployments to `main`. To restrict publication to release maintainers, add `numbata` and `dblock` as required reviewers and disable administrator bypass. Leave **Prevent self-review** unchecked to allow a maintainer to dispatch and approve their own release; enable it if a second maintainer must approve. Configure these protections before relying on maintainer-only publication.
-2. As a gem owner, open [Trusted publishers](https://rubygems.org/gems/danger-pr-comment/trusted_publishers) on RubyGems.org. Configure repository owner `numbata`, repository name `danger-pr-comment`, workflow filename `release.yml`, and environment `release`. Set the separate **workflow repository** fields to owner `dblock` and repository `ruby-gem-release`. Existing publishers must be updated for the reusable workflow; the old standalone-workflow configuration is not sufficient. Use the actual caller owner and repository when publishing from another repository; forks are not automatically trusted.
+2. As a gem owner, open [Trusted publishers](https://rubygems.org/gems/danger-pr-comment/trusted_publishers) on RubyGems.org. Configure repository owner `danger`, repository name `danger-pr-comment`, workflow filename `release.yml`, and environment `release`. Set the separate **workflow repository** fields to owner `dblock` and repository `ruby-gem-release`. Existing publishers must be updated for the reusable workflow; the old standalone-workflow configuration is not sufficient. Use the actual caller owner and repository when publishing from another repository; forks are not automatically trusted.
 3. Ensure branch rules allow the Actions bot to push release preparation and the next development version directly to `main`.
 
 The caller grants `contents: write` and `id-token: write` to the reusable workflow and runs only on `main`. The reusable workflow uses the `release` environment, authenticates through OIDC, and serializes releases. Repository writers can dispatch or rerun the workflow, but required environment reviewers control approval before the release job starts. Without required reviewers, repository writers can publish without maintainer approval. Repository variables are not an independent authorization boundary because writers can edit them.
-
-The old `RELEASERS` repository variable is no longer used and can be deleted with `gh variable delete RELEASERS --repo numbata/danger-pr-comment` after the workflow change is merged.
 
 After verifying trusted publishing works, remove any obsolete `RUBYGEMS_API_KEY` repository secret and revoke its RubyGems API key if it is no longer used elsewhere.
 
@@ -20,7 +18,7 @@ After verifying trusted publishing works, remove any obsolete `RUBYGEMS_API_KEY`
 
 Start from current `main`, review changes since the last release, and maintain nonempty release notes under `## [Unreleased]` in `CHANGELOG.md`. The previous release increments `lib/danger-pr-comment/version.rb` to the next patch version, so a normal patch release needs no manual version change.
 
-Run the [Release workflow](https://github.com/numbata/danger-pr-comment/actions/workflows/release.yml) on `main`, or use:
+Run the [Release workflow](https://github.com/danger/danger-pr-comment/actions/workflows/release.yml) on `main`, or use:
 
 ```sh
 gh workflow run release.yml --ref main                  # release the version in version.rb
