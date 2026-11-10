@@ -11,7 +11,7 @@ group :development do
   gem 'rubocop', '1.82.1'
   gem 'rubocop-rake'
   gem 'rubocop-rspec'
-  gem 'ruby-gem-release', '0.4.0'
+  gem 'ruby-gem-release', '0.5.0'
 end
 
 group :test do
