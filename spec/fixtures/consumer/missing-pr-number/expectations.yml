@@ -1,0 +1,8 @@
+danger_status: 0
+report: null
+preview:
+  status: 1
+  stdout: ""
+  stderr_contains: "danger-pr-comment: No such file or directory"
+summary: null
+comment: null

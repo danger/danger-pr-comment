@@ -13,6 +13,7 @@ at_exit do
   reporter = DangerPrComment::Reporter.new(dangerfile_instance.status_report)
   reporter.export_json(
     ENV.fetch('DANGER_REPORT_PATH', nil),
-    ENV.fetch('GITHUB_EVENT_PATH', nil)
+    ENV.fetch('GITHUB_EVENT_PATH', nil),
+    summary_path: ENV.fetch('GITHUB_STEP_SUMMARY', nil)
   )
 end

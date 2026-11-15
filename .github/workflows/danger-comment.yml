@@ -96,7 +96,9 @@ jobs:
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.payload.workflow_run.id}`;
             let body = `${marker}\n## ${title}\n`;
 
-            if (sections.length === 0) {
+            if (typeof report.rendered_markdown === 'string') {
+              body += report.rendered_markdown;
+            } else if (sections.length === 0) {
               body += 'No issues found.\n';
             } else {
               body += `${sections.join('\n\n')}\n`;

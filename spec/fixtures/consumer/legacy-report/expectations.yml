@@ -1,0 +1,30 @@
+danger_status: 0
+report:
+  pr_number: 7
+  errors: []
+  warnings: [Legacy warning]
+  messages: []
+  markdowns: []
+  rendered_markdown: &markdown |
+    ### Warnings
+    - Legacy warning
+preview:
+  status: 0
+  stdout: *markdown
+summary: |+
+  ## Danger Report
+
+  ### Warnings
+  - Legacy warning
+
+comment_report: comment-report.json
+comment:
+  method: createComment
+  issue_number: 7
+  body: |-
+    <!-- danger-report -->
+    ## Danger Report
+    ### Warnings
+    - Legacy warning
+
+    [View run](https://github.com/danger/example/actions/runs/123)

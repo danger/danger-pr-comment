@@ -1,0 +1,26 @@
+danger_status: 0
+environment:
+  GITHUB_STEP_SUMMARY: null
+report:
+  pr_number: 21
+  errors: []
+  warnings: []
+  messages: [Preview without Actions.]
+  markdowns: []
+  rendered_markdown: &markdown |
+    ### Messages
+    - Preview without Actions.
+preview:
+  status: 0
+  stdout: *markdown
+summary: null
+comment:
+  method: createComment
+  issue_number: 21
+  body: |-
+    <!-- danger-report -->
+    ## Danger Report
+    ### Messages
+    - Preview without Actions.
+
+    [View run](https://github.com/danger/example/actions/runs/123)

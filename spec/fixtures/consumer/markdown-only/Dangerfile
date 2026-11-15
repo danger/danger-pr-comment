@@ -1,0 +1,6 @@
+# frozen_string_literal: true
+
+danger.import_dangerfile(gem: 'danger-pr-comment')
+
+markdown File.read('details.md').strip
+markdown 'More details.'

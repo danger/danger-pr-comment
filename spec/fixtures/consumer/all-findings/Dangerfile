@@ -1,0 +1,8 @@
+# frozen_string_literal: true
+
+danger.import_dangerfile(gem: 'danger-pr-comment')
+
+self.fail 'Consumer error'
+warn 'Consumer warning'
+message 'Consumer message'
+markdown "**Consumer details**\n\nRaw Markdown."

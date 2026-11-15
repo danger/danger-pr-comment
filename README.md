@@ -11,14 +11,17 @@ Reusable GitHub Actions workflows for running Danger and posting a PR comment fr
   - [Prerequisites](#prerequisites)
   - [Quick Install](#quick-install)
   - [Manual Setup](#manual-setup)
+  - [Local Preview](#local-preview)
 - [Implementation Details](#implementation-details)
   - [JSON Report Output](#json-report-output)
     - [Shared Dangerfile](#shared-dangerfile)
     - [Custom at_exit Hook](#custom-at_exit-hook)
+  - [Actions Summaries](#actions-summaries)
   - [Permissions](#permissions)
   - [Inputs](#inputs)
     - [danger-run.yml](#danger-runyml)
     - [danger-comment.yml](#danger-commentyml)
+- [Development](#development)
 - [License](#license)
 
 ## Usage
@@ -112,6 +115,20 @@ jobs:
     secrets: inherit
 ```
 
+### Local Preview
+
+Render an existing JSON report as Markdown without running Danger or posting a comment:
+
+```sh
+bundle exec danger-pr-comment render danger-report.json
+```
+
+Redirect stdout to save the preview, for example `bundle exec danger-pr-comment render danger-report.json > danger-report.md`. The renderer exits successfully even if the report contains findings; unreadable files, invalid JSON, and invalid report roots exit nonzero with a diagnostic on stderr.
+
+The gem packages the executable from [`bin/danger-pr-comment`](bin/danger-pr-comment).
+
+The shared Ruby renderer formats errors, warnings, messages, and raw Markdown. Reports exported by the gem include this content in `rendered_markdown`, so local previews, Actions summaries, and PR comments use the same report body. The commenter still supplies its own marker, title, and workflow-run link, and retains legacy rendering for reports without `rendered_markdown`. It never executes the report or checks out pull request code.
+
 ## Implementation Details
 
 Using danger-pr-comment solves the problem of needing special permissions to post a PR comment from contributions from forks. This is implemented by producing a JSON report during the PR, and reading the report in a separate workflow.
@@ -124,7 +141,7 @@ By default, the commenter posts even when the report is empty. Set `comment-empt
 
 ### JSON Report Output
 
-Your Dangerfile must write a JSON report to `ENV['DANGER_REPORT_PATH']`.
+Your Dangerfile must write a JSON report to `ENV['DANGER_REPORT_PATH']`. The shared exporter preserves the existing `pr_number`, `errors`, `warnings`, `messages`, and `markdowns` fields and adds `rendered_markdown`.
 
 #### Shared Dangerfile
 
@@ -139,7 +156,7 @@ See [Dangerfile](Dangerfile) for implementation details.
 
 ```ruby
 # Dangerfile
-require 'json'
+require 'danger-pr-comment'
 require 'English'
 
 dangerfile_instance = self if defined?(Danger::Dangerfile) && is_a?(Danger::Dangerfile)
@@ -147,29 +164,17 @@ at_exit do
   next if $ERROR_INFO && !$ERROR_INFO.is_a?(SystemExit)
   next unless dangerfile_instance
 
-  report_path = ENV.fetch('DANGER_REPORT_PATH', nil)
-  event_path = ENV.fetch('GITHUB_EVENT_PATH', nil)
-  next unless report_path && event_path && File.exist?(event_path)
-
-  event = JSON.parse(File.read(event_path))
-  pr_number = event.dig('pull_request', 'number')
-  next unless pr_number
-
-  to_messages = lambda do |items|
-    Array(items).map { |item| item.respond_to?(:message) ? item.message : item.to_s }
-  end
-
-  report = {
-    pr_number: pr_number,
-    errors: to_messages.call(dangerfile_instance.status_report[:errors]),
-    warnings: to_messages.call(dangerfile_instance.status_report[:warnings]),
-    messages: to_messages.call(dangerfile_instance.status_report[:messages]),
-    markdowns: to_messages.call(dangerfile_instance.status_report[:markdowns])
-  }
-
-  File.write(report_path, JSON.pretty_generate(report))
+  DangerPrComment::Reporter.new(dangerfile_instance.status_report).export_json(
+    ENV.fetch('DANGER_REPORT_PATH', nil),
+    ENV.fetch('GITHUB_EVENT_PATH', nil),
+    summary_path: ENV.fetch('GITHUB_STEP_SUMMARY', nil)
+  )
 end
 ```
+
+### Actions Summaries
+
+When GitHub provides `GITHUB_STEP_SUMMARY`, the shared Dangerfile appends the rendered report under a "Danger Report" heading on the workflow run's Summary page. Earlier summary content is preserved, and empty reports show "No issues found." This runs in the report-producing job, including when Danger exits with reported errors, and does not depend on the commenting workflow or require additional write permissions. Outside Actions, the summary is simply omitted unless a summary path is explicitly supplied.
 
 ### Permissions
 
@@ -193,6 +198,14 @@ The `Danger Comment` workflow requires explicit permissions. Reusable workflows 
 - `comment-title`: Heading for the PR comment (default `Danger Report`).
 - `comment-marker`: Marker string used to update the comment (default `<!-- danger-report -->`).
 - `comment-empty`: Create comments for empty reports (boolean, default `true`). Set to `false` to skip creating empty-report comments; existing report comments are always updated.
+
+## Development
+
+Run `bundle exec rake` for the tests and Ruby lint.
+
+Installed-gem consumer scenarios live in [`spec/fixtures/consumer`](spec/fixtures/consumer). Each folder contains its own `Dangerfile`, `event.json`, `expectations.yml`, and any supporting assets. Expectations describe the Danger exit status, exported JSON, preview output, summary, and comment operation/body. Optional inputs cover missing summaries, existing comments, and legacy or pre-rendered reports. Add a folder to extend coverage without changing the Ruby test runner.
+
+The integration tests build and install the real gem, resolve a separate consumer bundle offline, and run the actual Danger and preview executables. Dependency gem bindirs are added explicitly so vendored CI bundles do not depend on globally installed executables. Comment writes are stubbed.
 
 ## License
 
