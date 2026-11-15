@@ -9,11 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- [#20](https://github.com/danger/danger-pr-comment/pull/20): Add opt-in attested triggering-PR provenance for automatic stacked-PR targets, retaining explicit base restrictions and rejecting stale or retargeted runs - [@dblock](https://github.com/dblock).
 - [#22](https://github.com/danger/danger-pr-comment/pull/22): Add a default-true `comment-empty` input to skip new empty-report comments when disabled while still updating existing reports - [@dblock](https://github.com/dblock).
 
 ### Fixed
 
 - [#21](https://github.com/danger/danger-pr-comment/pull/21): Find sticky comments across all pages, update only the Actions bot's own report markers, and serialize writers by PR source and marker - [@dblock](https://github.com/dblock).
+- [#20](https://github.com/danger/danger-pr-comment/pull/20): Validate report targets against the triggering pull request run before posting comments, with a configurable allowed base branch - [@dblock](https://github.com/dblock).
 
 ### Changed
 

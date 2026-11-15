@@ -12,6 +12,7 @@ Reusable GitHub Actions workflows for running Danger and posting a PR comment fr
   - [Quick Install](#quick-install)
   - [Manual Setup](#manual-setup)
 - [Implementation Details](#implementation-details)
+  - [Stacked PR Targets](#stacked-pr-targets)
   - [JSON Report Output](#json-report-output)
     - [Shared Dangerfile](#shared-dangerfile)
     - [Custom at_exit Hook](#custom-at_exit-hook)
@@ -122,6 +123,44 @@ Writers sharing the caller repository, source repository ID, head branch, and co
 
 By default, the commenter posts even when the report is empty. Set `comment-empty: false` in the commenter job's `with` inputs to avoid creating comments for empty reports. An empty report has no errors, warnings, messages, or markdown; this is independent of whether the Danger command succeeded. Existing report comments are still updated to "No issues found" when findings clear, so previous results do not remain stale.
 
+The commenter only processes successful or failed `pull_request` runs received through `workflow_run`. Reports are untrusted: before listing or writing comments, the commenter checks that the report identifies a positive integer PR number and fetches that PR from the caller's repository. Its current head commit, branch, and repository ID must match the triggering run, and its target branch must match the trusted allowed base. Without provenance, the allowed base is the repository's default branch (or the trusted caller's `base-branch` input). Mismatched reports and PRs whose head repository has been deleted fail before accessing comments. Reports from runs superseded by newer commits are also rejected. No pull request code is checked out or executed by the commenter.
+
+### Stacked PR Targets
+
+For a fixed non-default target, configure `base-branch` in the trusted commenter caller. To follow changing stack targets automatically, opt into attested PR provenance. The fallback becomes **explicit `base-branch` → verified triggering-PR base → repository default branch**. An explicit base remains a hard restriction, including when provenance is enabled.
+
+`workflow_run` is not the original PR event. Its `pull_requests` array and check-suite associations can be empty for forks, and commit-matching API results do not prove which PR triggered a run when PRs share head metadata. Looking up the base of the report's claimed PR would allow the untrusted report to choose its own restriction. Without provenance, the existing static-base/head checks are retained, but do not establish original-trigger identity.
+
+Add a **separate job** to the producer workflow (`Danger` above), alongside the read-only Danger job:
+
+```yaml
+  provenance:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: danger/danger-pr-comment/.github/workflows/danger-provenance.yml@PRODUCER_COMMIT_SHA
+```
+
+In the trusted commenter caller on your default branch, configure the corresponding certificate identity:
+
+```yaml
+jobs:
+  comment:
+    uses: danger/danger-pr-comment/.github/workflows/danger-comment.yml@COMMENTER_COMMIT_SHA
+    secrets: inherit
+    with:
+      provenance-signer: https://github.com/danger/danger-pr-comment/.github/workflows/danger-provenance.yml@PRODUCER_COMMIT_SHA
+```
+
+Replace the placeholder SHAs with full trusted commit SHAs containing these workflows. The producer's `uses` ref and the signer identity must use the **same** producer commit. Do not select either from PR data or trust a general-purpose attester that signs caller-supplied metadata. Keep the Danger job's existing read-only permissions; grant the signing permissions only to the separate metadata job.
+
+The metadata-only producer captures the original GitHub PR number, head and base, repository ID, workflow run ID, and attempt. It signs `provenance.json` with GitHub's official attestation action and uploads it with `provenance.sigstore.json` in `danger-pr-provenance-<attempt>` in the same run as the report. It neither downloads reports nor checks out or executes PR code. The commenter uses the hosted runner's `gh attestation verify --bundle` to check the file digest, exact signer identity, GitHub OIDC issuer, SLSA predicate, and GitHub-hosted runner policy, then validates the signed snapshot against the triggering run and live PR before any comment access. Bundle verification avoids an attestations API lookup and does not require adding `attestations: read` to commenter callers. The PR number in the report must equal the signed number, even if another PR shares every head field. Signed repository IDs are also checked, rather than relying only on certificate repository names. OIDC bearer tokens are not uploaded.
+
+Once `provenance-signer` is set, proof is required for **all** targets, including the default branch and explicit `base-branch` targets. Missing, invalid, inaccessible, wrong-run/attempt, or conflicting proof fails closed, without falling back to API associations or the default branch. If a lower PR merges and GitHub retargets the upper PR, a report for the old base is rejected. Trigger a fresh PR-event run (`edited` is included in the example above); rerunning the old event retains its old base snapshot. Base-branch commit advancement alone is not a retarget: the base repository and branch, not its tip SHA, are bound.
+
+Attested provenance currently supports GitHub.com and requires artifact-attestation availability for the repository's plan ([GitHub documentation](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations)). Fork PRs normally cannot receive the signing/write permissions needed to generate proof; automatic non-default targets therefore cannot be promised for forks. Do **not** enable write tokens for fork builds to work around this. Missing proof is rejected; callers that cannot produce proof can keep using the existing default or explicitly configured base without opting in. Existing callers and the installer remain unchanged.
+
 ### JSON Report Output
 
 Your Dangerfile must write a JSON report to `ENV['DANGER_REPORT_PATH']`.
@@ -175,6 +214,8 @@ end
 
 The `Danger Comment` workflow requires explicit permissions. Reusable workflows cannot grant permissions to their callers. Required: `actions: read` (download artifacts from the Danger run), `issues: write` and `pull-requests: write` (create/update PR comments).
 
+The optional `Danger PR Provenance` producer additionally requires `contents: read`, `id-token: write`, and `attestations: write` in its separate caller job. The commenter does not need these signing permissions.
+
 ### Inputs
 
 #### `danger-run.yml`
@@ -193,6 +234,8 @@ The `Danger Comment` workflow requires explicit permissions. Reusable workflows 
 - `comment-title`: Heading for the PR comment (default `Danger Report`).
 - `comment-marker`: Marker string used to update the comment (default `<!-- danger-report -->`).
 - `comment-empty`: Create comments for empty reports (boolean, default `true`). Set to `false` to skip creating empty-report comments; existing report comments are always updated.
+- `base-branch`: Allowed pull request target branch (defaults to the authenticated triggering base when provenance is enabled, otherwise the repository's default branch). An explicit value is always a hard restriction. Set this in the trusted caller workflow, for example `base-branch: release`; do not derive it from the report artifact.
+- `provenance-signer`: Exact certificate identity of the trusted, pinned `danger-provenance.yml` producer (default empty, disabled). Enables mandatory attestation verification and automatic base selection from the authenticated triggering PR. See [Stacked PR Targets](#stacked-pr-targets) for setup and fork limitations.
 
 ## License
 

@@ -9,7 +9,9 @@ const githubContext = {
 function resolveTemplate(template) {
   return template.replace(/\$\{\{\s*(.*?)\s*\}\}/g, (_, expression) => {
     const value = expression.replace(/\binputs\.([\w-]+)/g, 'inputs["$1"]');
-    return new Function('inputs', 'github', `return (${value});`)(input.inputs, githubContext);
+    return new Function('inputs', 'github', 'runner', 'steps', `return (${value});`)(
+      input.inputs, githubContext, { temp: '/tmp' }, { verify_provenance: { outcome: 'skipped' } }
+    );
   });
 }
 
@@ -35,7 +37,14 @@ const issues = {
   }
 };
 const github = {
-  rest: { issues },
+  rest: { issues, pulls: { get: async () => ({ data: {
+    head: {
+      sha: input.context.payload.workflow_run.head_sha,
+      ref: input.context.payload.workflow_run.head_branch,
+      repo: input.context.payload.workflow_run.head_repository
+    },
+    base: { ref: 'main' }
+  } }) } },
   paginate: async (method, args) => {
     const comments = [];
     for (let page = 1; ; page++) {

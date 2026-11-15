@@ -19,9 +19,13 @@ RSpec.describe 'Sticky comment workflow' do
       context: {
         repo: { owner: 'danger', repo: 'example' },
         serverUrl: 'https://github.com',
-        payload: { workflow_run: { id: 123, head_repository: { id: 42 }, head_branch: 'contribution' } }
+        payload: {
+          repository: { default_branch: 'main' },
+          workflow_run: { id: 123, head_repository: { id: 42 }, head_branch: 'contribution', head_sha: 'abc123' }
+        }
       },
-      inputs: { 'report-file' => 'danger-report.json', 'comment-marker' => marker, 'comment-title' => 'Danger Report' },
+      inputs: workflow.fetch('on', workflow[true]).fetch('workflow_call').fetch('inputs')
+                      .transform_values { |input| input.fetch('default', '') },
       report: { pr_number: 7, warnings: ['Please add tests'] },
       comments: []
     }

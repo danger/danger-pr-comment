@@ -1,0 +1,55 @@
+name: Danger PR Provenance
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  provenance:
+    if: github.event_name == 'pull_request' && github.server_url == 'https://github.com'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Capture triggering PR
+        uses: actions/github-script@v7
+        env:
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const provenance = {
+              version: 1,
+              repository_id: context.payload.repository.id,
+              run_id: context.runId,
+              run_attempt: Number(process.env.RUN_ATTEMPT),
+              pull_request: {
+                number: pr.number,
+                head: { sha: pr.head.sha, ref: pr.head.ref, repo: { id: pr.head.repo.id } },
+                base: { ref: pr.base.ref, repo: { id: pr.base.repo.id } },
+              },
+            };
+            require('fs').writeFileSync('provenance.json', JSON.stringify(provenance));
+
+      - name: Attest triggering PR
+        id: attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: provenance.json
+          create-storage-record: false
+
+      - name: Prepare verification bundle
+        env:
+          BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
+        run: cp -- "$BUNDLE_PATH" provenance.sigstore.json
+
+      - name: Upload triggering PR
+        uses: actions/upload-artifact@v4
+        with:
+          name: danger-pr-provenance-${{ github.run_attempt }}
+          path: |
+            provenance.json
+            provenance.sigstore.json
+          if-no-files-found: error

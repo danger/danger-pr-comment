@@ -1,11 +1,21 @@
 const input = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
-Object.assign(process.env, input.environment);
+for (const [key, template] of Object.entries(input.environment)) {
+  process.env[key] = template.replace(/\$\{\{\s*(.*?)\s*\}\}/g, (_, expression) => {
+    const value = expression.replace(/\binputs\.([\w-]+)/g, 'inputs["$1"]');
+    return new Function('inputs', 'github', 'runner', 'steps', `return (${value});`)(
+      input.inputs, { event: input.context.payload }, { temp: '/tmp' }, { verify_provenance: { outcome: 'skipped' } }
+    );
+  });
+}
 const result = { calls: [], failures: [] };
 const record = (method, data) => async args => {
   result.calls.push({ method, ...args });
   return { data };
 };
-const github = { rest: { issues: {
+const github = { rest: { pulls: { get: async () => ({ data: {
+  head: { sha: 'abc123', ref: 'contribution', repo: { id: 42 } },
+  base: { ref: 'main' }
+} }) }, issues: {
   listComments: record('listComments', input.comments),
   createComment: record('createComment'),
   updateComment: record('updateComment')

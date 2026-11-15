@@ -28,6 +28,16 @@ on:
         required: false
         type: boolean
         default: true
+      base-branch:
+        description: "Allowed PR target branch. Defaults to the verified triggering base, or the repository default without provenance."
+        required: false
+        type: string
+        default: ""
+      provenance-signer:
+        description: "Exact trusted metadata producer certificate identity. Empty disables attested PR provenance."
+        required: false
+        type: string
+        default: ""
 
 permissions:
   actions: read        # download artifacts
@@ -39,6 +49,11 @@ jobs:
     concurrency:
       group: danger-pr-comment-${{ github.repository }}-${{ github.event.workflow_run.head_repository.id }}-${{ github.event.workflow_run.head_branch }}-${{ inputs.comment-marker }}
       cancel-in-progress: false
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      (github.event.workflow_run.conclusion == 'success' ||
+       github.event.workflow_run.conclusion == 'failure')
     runs-on: ubuntu-latest
     steps:
       - name: Download Danger report
@@ -49,6 +64,37 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN || github.token }}
 
+      - name: Download triggering PR provenance
+        if: inputs.provenance-signer != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: danger-pr-provenance-${{ github.event.workflow_run.run_attempt }}
+          path: ${{ runner.temp }}/danger-pr-provenance
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN || github.token }}
+
+      - name: Verify triggering PR provenance
+        id: verify_provenance
+        if: inputs.provenance-signer != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN || github.token }}
+          GH_HOST: github.com
+          PROVENANCE_PATH: ${{ runner.temp }}/danger-pr-provenance/provenance.json
+          PROVENANCE_BUNDLE_PATH: ${{ runner.temp }}/danger-pr-provenance/provenance.sigstore.json
+          PROVENANCE_SIGNER: ${{ inputs.provenance-signer }}
+        run: |
+          if [ "$GITHUB_SERVER_URL" != "https://github.com" ]; then
+            echo "Attested PR provenance requires GitHub.com" >&2
+            exit 1
+          fi
+          gh attestation verify "$PROVENANCE_PATH" \
+            --bundle "$PROVENANCE_BUNDLE_PATH" \
+            --repo "$GITHUB_REPOSITORY" \
+            --cert-identity "$PROVENANCE_SIGNER" \
+            --cert-oidc-issuer https://token.actions.githubusercontent.com \
+            --predicate-type https://slsa.dev/provenance/v1 \
+            --deny-self-hosted-runners
+
       - name: Post or update PR comment
         uses: actions/github-script@v7
         env:
@@ -56,6 +102,11 @@ jobs:
           COMMENT_MARKER: ${{ inputs.comment-marker }}
           COMMENT_TITLE: ${{ inputs.comment-title }}
           COMMENT_EMPTY: ${{ inputs.comment-empty }}
+          BASE_BRANCH: ${{ inputs.base-branch }}
+          DEFAULT_BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          PROVENANCE_SIGNER: ${{ inputs.provenance-signer }}
+          PROVENANCE_VERIFIED: ${{ steps.verify_provenance.outcome == 'success' }}
+          PROVENANCE_PATH: ${{ runner.temp }}/danger-pr-provenance/provenance.json
         with:
           github-token: ${{ secrets.GITHUB_TOKEN || github.token }}
           script: |
@@ -73,8 +124,54 @@ jobs:
             const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
             const prNumber = report.pr_number;
 
-            if (!prNumber) {
-              core.setFailed('Report did not include pr_number');
+            if (!Number.isSafeInteger(prNumber) || prNumber < 1) {
+              core.setFailed('Danger report must identify a valid pull request');
+              return;
+            }
+
+            const run = context.payload.workflow_run;
+            let expectedBase = process.env.BASE_BRANCH;
+            let origin;
+            if (process.env.PROVENANCE_SIGNER) {
+              if (process.env.PROVENANCE_VERIFIED !== 'true') {
+                core.setFailed('Triggering PR provenance was not verified');
+                return;
+              }
+              const proof = JSON.parse(fs.readFileSync(process.env.PROVENANCE_PATH, 'utf8'));
+              origin = proof?.pull_request;
+              const repositoryId = context.payload.repository?.id;
+              if (proof?.version !== 1 ||
+                  !Number.isSafeInteger(repositoryId) || repositoryId < 1 ||
+                  proof.repository_id !== repositoryId ||
+                  !Number.isSafeInteger(run.id) || run.id < 1 || proof.run_id !== run.id ||
+                  !Number.isSafeInteger(run.run_attempt) || run.run_attempt < 1 ||
+                  proof.run_attempt !== run.run_attempt ||
+                  origin?.number !== prNumber ||
+                  origin?.head?.sha !== run.head_sha ||
+                  origin?.head?.ref !== run.head_branch ||
+                  origin?.head?.repo?.id !== run.head_repository?.id ||
+                  origin?.base?.repo?.id !== repositoryId ||
+                  typeof origin?.base?.ref !== 'string' || !origin.base.ref ||
+                  (expectedBase && origin.base.ref !== expectedBase)) {
+                core.setFailed('Provenance does not identify the triggering pull request');
+                return;
+              }
+              expectedBase = origin.base.ref;
+            }
+            expectedBase ||= process.env.DEFAULT_BASE_BRANCH;
+
+            const { data: pr } = await github.rest.pulls.get({
+              ...context.repo,
+              pull_number: prNumber,
+            });
+            if (!run.head_sha || !run.head_branch || !run.head_repository ||
+                !Number.isSafeInteger(run.head_repository.id) || run.head_repository.id < 1 ||
+                pr.head?.sha !== run.head_sha ||
+                pr.head?.ref !== run.head_branch ||
+                pr.head?.repo?.id !== run.head_repository.id ||
+                !expectedBase || pr.base?.ref !== expectedBase ||
+                (origin && pr.base?.repo?.id !== origin.base.repo.id)) {
+              core.setFailed('Danger report does not match the triggering pull request');
               return;
             }
 
