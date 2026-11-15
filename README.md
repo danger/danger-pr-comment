@@ -116,6 +116,10 @@ jobs:
 
 Using danger-pr-comment solves the problem of needing special permissions to post a PR comment from contributions from forks. This is implemented by producing a JSON report during the PR, and reading the report in a separate workflow.
 
+Comments are sticky: the commenter searches every page of PR comments and updates the first comment authored by `github-actions[bot]` whose body starts with the configured marker on its own line. Comments from people or other bots, quoted markers, and other report markers are left untouched. If no matching comment exists, it creates one.
+
+Writers sharing the caller repository, source repository ID, head branch, and comment marker are serialized without cancelling an in-progress writer. This prevents simultaneous runs for the same PR source from both creating a comment, including for fork contributions. Different markers remain independent. GitHub concurrency does not guarantee execution order; this is not a newest-report selection policy.
+
 ### JSON Report Output
 
 Your Dangerfile must write a JSON report to `ENV['DANGER_REPORT_PATH']`.

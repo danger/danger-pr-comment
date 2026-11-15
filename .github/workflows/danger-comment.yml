@@ -31,6 +31,9 @@ permissions:
 
 jobs:
   comment:
+    concurrency:
+      group: danger-pr-comment-${{ github.repository }}-${{ github.event.workflow_run.head_repository.id }}-${{ github.event.workflow_run.head_branch }}-${{ inputs.comment-marker }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
       - name: Download Danger report
@@ -96,14 +99,18 @@ jobs:
             body += `\n[View run](${runUrl})`;
 
             const { owner, repo } = context.repo;
-            const { data: comments } = await github.rest.issues.listComments({
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner,
               repo,
               issue_number: prNumber,
               per_page: 100,
             });
 
-            const existing = comments.find(comment => comment.body && comment.body.includes(marker));
+            const existing = comments.find(comment =>
+              comment.user?.type === 'Bot' &&
+              comment.user?.login === 'github-actions[bot]' &&
+              comment.body?.startsWith(`${marker}\n`)
+            );
 
             if (existing) {
               await github.rest.issues.updateComment({
