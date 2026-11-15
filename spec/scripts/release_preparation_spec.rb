@@ -7,7 +7,7 @@ require 'ruby-gem-release/release'
 require_relative '../../scripts/release_preparation'
 
 RSpec.describe ReleaseChangelog do
-  let(:release) { RubyGemRelease::Release.new(version: '1.2.3', previous_version: '1.2.3', date: Date.new(2026, 11, 8)) }
+  let(:release) { RubyGemRelease::Release.new(version: '1.2.3', gemspec_version: '1.2.3', date: Date.new(2026, 11, 8)) }
   let(:changelog) { described_class.new }
   let(:workflow_paths) { %w[README.md scripts/install-workflows.sh spec/scripts/install_workflows_spec.rb] }
 
