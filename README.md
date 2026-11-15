@@ -116,9 +116,11 @@ jobs:
 
 Using danger-pr-comment solves the problem of needing special permissions to post a PR comment from contributions from forks. This is implemented by producing a JSON report during the PR, and reading the report in a separate workflow.
 
+Before commenting, the workflow looks for one open PR matching the run's source repository, branch, and commit, then checks its current target. This reduces misdirected comments but does not prove which PR originally triggered the run. See [Security](SECURITY.md) for the worst-case risks, detailed checks, and stacked-PR setup.
+
 Comments are sticky: the commenter searches every page of PR comments and updates the first comment authored by `github-actions[bot]` whose body starts with the configured marker on its own line. Comments from people or other bots, quoted markers, and other report markers are left untouched. If no matching comment exists, it creates one.
 
-Writers sharing the caller repository, source repository ID, head branch, and comment marker are serialized without cancelling an in-progress writer. This prevents simultaneous runs for the same PR source from both creating a comment, including for fork contributions. Different markers remain independent. GitHub concurrency does not guarantee execution order; this is not a newest-report selection policy.
+Writers sharing the caller repository, source repository ID, head branch, and comment marker are serialized without cancelling an in-progress writer. This prevents simultaneous runs for the same PR source from both creating a comment, including for fork contributions. Different markers remain independent.
 
 By default, the commenter posts even when the report is empty. Set `comment-empty: false` in the commenter job's `with` inputs to avoid creating comments for empty reports. An empty report has no errors, warnings, messages, or markdown; this is independent of whether the Danger command succeeded. Existing report comments are still updated to "No issues found" when findings clear, so previous results do not remain stale.
 
@@ -193,6 +195,7 @@ The `Danger Comment` workflow requires explicit permissions. Reusable workflows 
 - `comment-title`: Heading for the PR comment (default `Danger Report`).
 - `comment-marker`: Marker string used to update the comment (default `<!-- danger-report -->`).
 - `comment-empty`: Create comments for empty reports (boolean, default `true`). Set to `false` to skip creating empty-report comments; existing report comments are always updated.
+- `base-branch`: Allowed current PR target (default: repository default branch). A literal value is a hard restriction; `"*"` explicitly allows changing stacked targets within the caller repository. Configure this in the trusted caller, not from report data. See [Security](SECURITY.md#allowed-target-branches) for details.
 
 ## License
 

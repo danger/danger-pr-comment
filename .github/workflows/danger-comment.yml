@@ -28,6 +28,11 @@ on:
         required: false
         type: boolean
         default: true
+      base-branch:
+        description: "Allowed current PR base. Empty uses the repository default; '*' explicitly allows any base in this repository."
+        required: false
+        type: string
+        default: ""
 
 permissions:
   actions: read        # download artifacts
@@ -36,6 +41,11 @@ permissions:
 
 jobs:
   comment:
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      (github.event.workflow_run.conclusion == 'success' ||
+       github.event.workflow_run.conclusion == 'failure')
     concurrency:
       group: danger-pr-comment-${{ github.repository }}-${{ github.event.workflow_run.head_repository.id }}-${{ github.event.workflow_run.head_branch }}-${{ inputs.comment-marker }}
       cancel-in-progress: false
@@ -56,6 +66,7 @@ jobs:
           COMMENT_MARKER: ${{ inputs.comment-marker }}
           COMMENT_TITLE: ${{ inputs.comment-title }}
           COMMENT_EMPTY: ${{ inputs.comment-empty }}
+          BASE_BRANCH: ${{ inputs.base-branch || github.event.repository.default_branch }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN || github.token }}
           script: |
@@ -73,8 +84,53 @@ jobs:
             const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
             const prNumber = report.pr_number;
 
-            if (!prNumber) {
-              core.setFailed('Report did not include pr_number');
+            if (!Number.isSafeInteger(prNumber) || prNumber < 1) {
+              core.setFailed('Danger report must identify a valid pull request');
+              return;
+            }
+
+            const run = context.payload.workflow_run;
+            const repositoryId = context.payload.repository?.id;
+            const headOwner = run.head_repository?.owner?.login;
+            const runCreatedAt = typeof run.created_at === 'string' ? Date.parse(run.created_at) : NaN;
+            if (typeof run.head_sha !== 'string' || !run.head_sha ||
+                typeof run.head_branch !== 'string' || !run.head_branch ||
+                !Number.isSafeInteger(run.head_repository?.id) || run.head_repository.id < 1 ||
+                typeof headOwner !== 'string' || !headOwner ||
+                !Number.isSafeInteger(repositoryId) || repositoryId < 1 ||
+                !Number.isFinite(runCreatedAt) || !process.env.BASE_BRANCH) {
+              core.setFailed('Triggering run is missing required PR matching metadata');
+              return;
+            }
+
+            const matchesHead = pr =>
+              pr.head?.sha === run.head_sha &&
+              pr.head?.ref === run.head_branch &&
+              pr.head?.repo?.id === run.head_repository.id &&
+              pr.base?.repo?.id === repositoryId;
+
+            const pulls = await github.paginate(github.rest.pulls.list, {
+              ...context.repo,
+              state: 'open',
+              head: `${headOwner}:${run.head_branch}`,
+              per_page: 100,
+            });
+            const matches = pulls.filter(pr => pr.state === 'open' && matchesHead(pr));
+            if (matches.length !== 1 || matches[0].number !== prNumber) {
+              core.setFailed('Danger report must match exactly one current open PR across all bases');
+              return;
+            }
+
+            const { data: pr } = await github.rest.pulls.get({
+              ...context.repo,
+              pull_number: matches[0].number,
+            });
+            const prCreatedAt = typeof pr.created_at === 'string' ? Date.parse(pr.created_at) : NaN;
+            if (pr.number !== prNumber || pr.state !== 'open' || !matchesHead(pr) ||
+                !Number.isFinite(prCreatedAt) || prCreatedAt > runCreatedAt ||
+                typeof pr.base?.ref !== 'string' || !pr.base.ref ||
+                (process.env.BASE_BRANCH !== '*' && pr.base.ref !== process.env.BASE_BRANCH)) {
+              core.setFailed('Current PR no longer matches the run or allowed base');
               return;
             }
 
