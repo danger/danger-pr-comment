@@ -23,6 +23,11 @@ on:
         required: false
         type: string
         default: "<!-- danger-report -->"
+      comment-empty:
+        description: "Create comments for empty reports. Existing report comments are always updated."
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   actions: read        # download artifacts
@@ -50,6 +55,7 @@ jobs:
           REPORT_PATH: report/${{ inputs.report-file }}
           COMMENT_MARKER: ${{ inputs.comment-marker }}
           COMMENT_TITLE: ${{ inputs.comment-title }}
+          COMMENT_EMPTY: ${{ inputs.comment-empty }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN || github.token }}
           script: |
@@ -119,7 +125,7 @@ jobs:
                 comment_id: existing.id,
                 body,
               });
-            } else {
+            } else if (sections.length > 0 || process.env.COMMENT_EMPTY !== 'false') {
               await github.rest.issues.createComment({
                 owner,
                 repo,
