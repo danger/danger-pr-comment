@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- [#21](https://github.com/danger/danger-pr-comment/pull/21): Find sticky comments across all pages, update only the Actions bot's own report markers, and serialize writers by PR source and marker - [@dblock](https://github.com/dblock).
+
 ### Changed
 
 - [#19](https://github.com/danger/danger-pr-comment/pull/19): Update ruby-gem-release to 0.6.0 and migrate the release context and recovery instructions - [@dblock](https://github.com/dblock).
