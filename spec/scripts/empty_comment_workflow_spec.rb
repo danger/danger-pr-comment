@@ -70,6 +70,31 @@ RSpec.describe 'Empty report comments' do
     expect(calls.last.fetch('body')).not_to include('Old warnings')
   end
 
+  ['', " \n\t", "No issues found.\n"].each do |markdown|
+    it "suppresses a new comment for empty Markdown #{markdown.inspect} despite findings in the arrays" do
+      inputs['comment-empty'] = false
+      fixture[:report][:warnings] = ['Ignored by override']
+      fixture[:report][:rendered_markdown] = markdown
+
+      expect(execute_workflow.map { |call| call.fetch('method') }).to eq(['listComments'])
+    end
+  end
+
+  it 'clears an existing comment when a blank override hides legacy findings' do
+    inputs['comment-empty'] = false
+    fixture[:report][:warnings] = ['Ignored by override']
+    fixture[:report][:rendered_markdown] = ''
+    calls = execute_workflow(comments: [{
+                               id: 10,
+                               user: { login: 'github-actions[bot]', type: 'Bot' },
+                               body: "<!-- danger-report -->\nOld warnings"
+                             }])
+
+    expect(calls.last).to include('method' => 'updateComment', 'comment_id' => 10)
+    expect(calls.last.fetch('body')).to include("No issues found.\n\n[View run]")
+    expect(calls.last.fetch('body')).not_to include('Ignored by override', 'Old warnings')
+  end
+
   %i[errors warnings messages markdowns].each do |section|
     it "still comments on #{section} when empty comments are disabled" do
       inputs['comment-empty'] = false

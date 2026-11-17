@@ -127,7 +127,7 @@ Redirect stdout to save the preview, for example `bundle exec danger-pr-comment 
 
 The gem packages the executable from [`bin/danger-pr-comment`](bin/danger-pr-comment).
 
-The shared Ruby renderer formats errors, warnings, messages, and raw Markdown. Reports exported by the gem include this content in `rendered_markdown`, so local previews, Actions summaries, and PR comments use the same report body. The commenter still supplies its own marker, title, and workflow-run link, and retains legacy rendering for reports without `rendered_markdown`. It never executes the report or checks out pull request code.
+The shared Ruby renderer formats errors, warnings, messages, and raw Markdown. Reports exported by the gem include this content in `rendered_markdown`, so local previews, Actions summaries, and PR comments use the same report body. When `rendered_markdown` is a string, it overrides the legacy arrays for both the comment body and the empty-report decision. The commenter still supplies its own marker, title, and separately spaced workflow-run link, and retains legacy rendering for reports without a string `rendered_markdown`. It never executes the report or checks out pull request code.
 
 ## Implementation Details
 
@@ -137,7 +137,7 @@ Comments are sticky: the commenter searches every page of PR comments and update
 
 Writers sharing the caller repository, source repository ID, head branch, and comment marker are serialized without cancelling an in-progress writer. This prevents simultaneous runs for the same PR source from both creating a comment, including for fork contributions. Different markers remain independent. GitHub concurrency does not guarantee execution order; this is not a newest-report selection policy.
 
-By default, the commenter posts even when the report is empty. Set `comment-empty: false` in the commenter job's `with` inputs to avoid creating comments for empty reports. An empty report has no errors, warnings, messages, or markdown; this is independent of whether the Danger command succeeded. Existing report comments are still updated to "No issues found" when findings clear, so previous results do not remain stale.
+By default, the commenter posts even when the report is empty. Set `comment-empty: false` in the commenter job's `with` inputs to avoid creating comments for empty reports. The effective report body is empty when it is blank/whitespace or, after trimming whitespace, exactly the renderer's `No issues found.` message; this is independent of whether the Danger command succeeded. For legacy reports, the body comes from the errors, warnings, messages, and markdown arrays. Existing report comments are still updated to "No issues found" when findings clear, including when a Markdown override is blank, so previous results do not remain stale.
 
 ### JSON Report Output
 
