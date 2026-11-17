@@ -1,5 +1,5 @@
 const input = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
-const result = { calls: [], failures: [], skipped: false };
+const result = { calls: [], failures: [], notices: [], skipped: false };
 const githubContext = { event_name: input.context.eventName, event: input.context.payload };
 
 function evaluate(expression) {
@@ -49,7 +49,10 @@ async function main() {
   const AsyncFunction = (async () => {}).constructor;
   await new AsyncFunction('require', 'context', 'github', 'core', input.script)(
     name => { if (name === 'fs') return fs; throw new Error(`Unexpected module: ${name}`); },
-    input.context, github, { setFailed: message => result.failures.push(message) }
+    input.context, github, {
+      setFailed: message => result.failures.push(message),
+      notice: message => result.notices.push(message)
+    }
   );
 }
 

@@ -115,9 +115,17 @@ jobs:
               head: `${headOwner}:${run.head_branch}`,
               per_page: 100,
             });
-            const matches = pulls.filter(pr => pr.state === 'open' && matchesHead(pr));
-            if (matches.length !== 1 || matches[0].number !== prNumber) {
-              core.setFailed('Danger report must match exactly one current open PR across all bases');
+            const matches = pulls.filter(matchesHead);
+            if (matches.length === 0) {
+              core.notice(`Skipping report: no current open PR matches source ${headOwner}:${run.head_branch} at ${run.head_sha}`);
+              return;
+            }
+            if (matches.length !== 1) {
+              core.setFailed(`Ambiguous report destination: ${matches.length} open PRs match the run across all bases`);
+              return;
+            }
+            if (matches[0].number !== prNumber) {
+              core.setFailed(`Report claims PR #${prNumber}, but the run resolves to PR #${matches[0].number}`);
               return;
             }
 
@@ -126,11 +134,30 @@ jobs:
               pull_number: matches[0].number,
             });
             const prCreatedAt = typeof pr.created_at === 'string' ? Date.parse(pr.created_at) : NaN;
-            if (pr.number !== prNumber || pr.state !== 'open' || !matchesHead(pr) ||
-                !Number.isFinite(prCreatedAt) || prCreatedAt > runCreatedAt ||
-                typeof pr.base?.ref !== 'string' || !pr.base.ref ||
+            if (pr.head?.ref !== run.head_branch ||
+                pr.head?.repo?.id !== run.head_repository.id || pr.base?.repo?.id !== repositoryId) {
+              core.setFailed('Current PR source branch or repository no longer matches the run');
+              return;
+            }
+            if (!Number.isFinite(prCreatedAt) || prCreatedAt > runCreatedAt) {
+              core.setFailed(`PR creation time ${pr.created_at} is invalid or newer than run creation time ${run.created_at}`);
+              return;
+            }
+            if (typeof pr.base?.ref !== 'string' || !pr.base.ref ||
                 (process.env.BASE_BRANCH !== '*' && pr.base.ref !== process.env.BASE_BRANCH)) {
-              core.setFailed('Current PR no longer matches the run or allowed base');
+              core.setFailed(`Current PR base ${pr.base?.ref} does not match allowed base ${process.env.BASE_BRANCH}`);
+              return;
+            }
+            if (!['open', 'closed'].includes(pr.state) || typeof pr.head?.sha !== 'string' || !pr.head.sha) {
+              core.setFailed('Current PR is missing a valid open/closed state or head SHA');
+              return;
+            }
+            if (pr.state === 'closed') {
+              core.notice(`Skipping report for PR #${prNumber}: expected open state, current state is closed`);
+              return;
+            }
+            if (pr.head.sha !== run.head_sha) {
+              core.notice(`Skipping report for PR #${prNumber}: run head ${run.head_sha}, current head ${pr.head.sha}`);
               return;
             }
 

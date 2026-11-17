@@ -47,12 +47,21 @@ RSpec.describe 'Current PR matching workflow' do
   def expect_rejection(**overrides)
     result = execute_workflow(**overrides)
     expect(result.fetch('failures')).not_to be_empty
+    expect(result.fetch('notices')).to be_empty
     expect(result.fetch('calls').map { |call| call.fetch('method') }).not_to include('listComments', 'createComment', 'updateComment')
     result
   end
 
   def irrelevant_pulls(count)
     Array.new(count) { |index| pr.merge(number: index + 100, head: pr.fetch(:head).merge(repo: { id: 99 })) }
+  end
+
+  def expect_skip(**overrides)
+    result = execute_workflow(**overrides)
+    expect(result.fetch('failures')).to be_empty
+    expect(result.fetch('notices')).not_to be_empty
+    expect(result.fetch('calls').map { |call| call.fetch('method') }).not_to include('listComments', 'createComment', 'updateComment')
+    result
   end
 
   it 'resolves a fork PR independently of an empty workflow-run association array' do
@@ -105,12 +114,13 @@ RSpec.describe 'Current PR matching workflow' do
   it 'does not let a literal override accept another current base' do
     fixture[:inputs]['base-branch'] = 'release'
 
-    expect_rejection
+    expect(expect_rejection.fetch('failures').first).to include('Current PR base main', 'allowed base release')
   end
 
   it 'rejects a forged report number without fetching that PR' do
     result = expect_rejection(report: { pr_number: 8 })
 
+    expect(result.fetch('failures').first).to include('Report claims PR #8', 'run resolves to PR #7')
     expect(result.fetch('calls')).to contain_exactly(include('method' => 'listPulls'))
   end
 
@@ -118,6 +128,7 @@ RSpec.describe 'Current PR matching workflow' do
     fixture[:inputs]['base-branch'] = 'main'
     result = expect_rejection(pulls: [pr, pr.merge(number: 8, base: { ref: 'feature/lower', repo: { id: 1 } })])
 
+    expect(result.fetch('failures').first).to include('Ambiguous report destination: 2')
     expect(result.fetch('calls')).to contain_exactly(include('method' => 'listPulls'))
   end
 
@@ -174,16 +185,14 @@ RSpec.describe 'Current PR matching workflow' do
   end
 
   {
-    'commit' => ->(pr) { pr[:head][:sha] = 'new-commit' },
     'branch' => ->(pr) { pr[:head][:ref] = 'other' },
     'source repository' => ->(pr) { pr[:head][:repo][:id] = 99 },
     'deleted fork' => ->(pr) { pr[:head][:repo] = nil },
-    'base repository' => ->(pr) { pr[:base][:repo][:id] = 2 },
-    'closed state' => ->(pr) { pr[:state] = 'closed' }
+    'base repository' => ->(pr) { pr[:base][:repo][:id] = 2 }
   }.each do |name, change|
-    it "rejects a candidate with a mismatched #{name}" do
+    it "skips when no candidate matches the #{name}" do
       change.call(fixture.fetch(:pulls).first)
-      expect_rejection
+      expect_skip
     end
 
     it "rechecks #{name} when fetching the independently resolved PR" do
@@ -194,8 +203,17 @@ RSpec.describe 'Current PR matching workflow' do
     end
   end
 
-  it 'rejects no matching open PR' do
-    expect_rejection(pulls: [])
+  it 'skips a report overtaken by a push before lookup' do
+    fixture[:pulls].first[:head][:sha] = 'new-commit'
+
+    expect_skip
+  end
+
+  it 'skips no matching open PR without assuming why it no longer matches' do
+    result = expect_skip(pulls: [])
+
+    expect(result.fetch('notices').first).to include('no current open PR matches', 'contributor:contribution', 'abc123')
+    expect(result.fetch('calls').map { |call| call.fetch('method') }).to eq(['listPulls'])
   end
 
   it 'does not let the wildcard bypass the caller repository boundary' do
@@ -214,8 +232,29 @@ RSpec.describe 'Current PR matching workflow' do
     end
   end
 
-  it 'rechecks the fetched PR number before comment access' do
-    fixture[:pr][:number] = 8
+  it 'skips a PR closed or merged after lookup' do
+    fixture[:pr][:state] = 'closed'
+    result = expect_skip
+
+    expect(result.fetch('notices').first).to include('expected open state, current state is closed')
+  end
+
+  it 'reports the run and current SHA when a push overtakes the report' do
+    fixture[:pr][:head][:sha] = 'new-commit'
+    result = expect_skip
+
+    expect(result.fetch('notices').first).to include('run head abc123, current head new-commit')
+  end
+
+  it 'fails rather than skipping malformed live PR metadata' do
+    fixture[:pr][:head][:sha] = nil
+
+    expect_rejection
+  end
+
+  it 'still fails a disallowed base even if the PR also closed' do
+    fixture[:pr][:state] = 'closed'
+    fixture[:pr][:base][:ref] = 'release'
 
     expect_rejection
   end
