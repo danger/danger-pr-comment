@@ -76,21 +76,32 @@ RSpec.describe DangerPrComment, :integration do
     [stdout, stderr]
   end
 
+  def consumer_workflow
+    fixture = JSON.parse(File.read(File.join(root, 'spec/fixtures/consumer_workflow.json')), symbolize_names: true)
+    event = JSON.parse(File.read(File.join(scenario, 'event.json')))
+    fixture.fetch(:pr)[:number] = event.dig('pull_request', 'number')
+    fixture
+  end
+
+  def existing_comments
+    path = File.join(workspace, 'comments.json')
+    File.exist?(path) ? JSON.parse(File.read(path)) : []
+  end
+
   def comment_input
-    {
+    consumer_workflow.merge(
       workflow: YAML.load_file(File.join(root, '.github/workflows/danger-comment.yml')),
       inputs: expectations.fetch('comment_inputs', {}),
       reportPath: File.join(workspace, expectations.fetch('comment_report', 'report.json')),
-      comments: File.exist?(File.join(workspace, 'comments.json')) ? JSON.parse(File.read(File.join(workspace, 'comments.json'))) : [],
-      context: { repo: { owner: 'danger', repo: 'example' }, serverUrl: 'https://github.com', payload: { workflow_run: { id: 123 } } }
-    }
+      comments: existing_comments
+    )
   end
 
   def expect_comment
     stdout, = command('node', File.join(root, 'spec/fixtures/publish_consumer_report.js'), stdin_data: JSON.generate(comment_input))
     result = JSON.parse(stdout)
-    expect(result.fetch('failures')).to be_empty
-    expect(result).to include(expectations.fetch('comment'))
+    expect(result).to include(expectations.fetch('comment').merge('failures' => [], 'notices' => [], 'skipped' => false))
+    expect(result.fetch('calls')).to start_with('listPulls', 'getPull', 'listComments')
   end
 
   def expect_report
