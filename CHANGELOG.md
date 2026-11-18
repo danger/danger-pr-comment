@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [#24](https://github.com/danger/danger-pr-comment/pull/24): Resolve report targets from a unique current open PR matching the run's source and head before comment access, skip routine PR races with notices, and document the allowed-base policy and current-state matching limitations - [@dblock](https://github.com/dblock).
 - [#21](https://github.com/danger/danger-pr-comment/pull/21): Find sticky comments across all pages, update only the Actions bot's own report markers, and serialize writers by PR source and marker - [@dblock](https://github.com/dblock).
 
 ### Changed

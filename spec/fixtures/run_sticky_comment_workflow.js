@@ -34,8 +34,17 @@ const issues = {
     result.comments.find(comment => comment.id === args.comment_id).body = args.body;
   }
 };
+const run = input.context.payload.workflow_run;
+const pr = {
+  number: input.report.pr_number, state: 'open', created_at: '2026-11-15T09:00:00Z',
+  head: { sha: run.head_sha, ref: run.head_branch, repo: run.head_repository },
+  base: { ref: 'main', repo: { id: input.context.payload.repository.id } }
+};
 const github = {
-  rest: { issues },
+  rest: { issues, pulls: {
+    list: async () => ({ data: [pr] }),
+    get: async () => ({ data: pr })
+  } },
   paginate: async (method, args) => {
     const comments = [];
     for (let page = 1; ; page++) {

@@ -15,13 +15,18 @@ RSpec.describe 'Empty report comments' do
     step = workflow.fetch('jobs').fetch('comment').fetch('steps').last
     {
       script: step.fetch('with').fetch('script'),
-      environment: step.fetch('env').transform_values do |template|
-        template.gsub(/\$\{\{\s*inputs\.([\w-]+)\s*\}\}/) { inputs.fetch(Regexp.last_match(1)).to_s }
-      end,
+      environment: step.fetch('env'),
+      inputs: inputs,
       context: {
         repo: { owner: 'danger', repo: 'example' },
         serverUrl: 'https://github.com',
-        payload: { workflow_run: { id: 123 } }
+        payload: {
+          repository: { id: 1, default_branch: 'main' },
+          workflow_run: {
+            id: 123, created_at: '2026-11-15T10:00:00Z', head_sha: 'abc123',
+            head_branch: 'contribution', head_repository: { id: 42, owner: { login: 'contributor' } }
+          }
+        }
       },
       report: { pr_number: 7, errors: [], warnings: [], messages: [], markdowns: [] },
       comments: []

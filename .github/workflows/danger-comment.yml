@@ -28,6 +28,11 @@ on:
         required: false
         type: boolean
         default: true
+      base-branch:
+        description: "Allowed current PR base. Empty uses the repository default; '*' explicitly allows any base in this repository."
+        required: false
+        type: string
+        default: ""
 
 permissions:
   actions: read        # download artifacts
@@ -36,6 +41,11 @@ permissions:
 
 jobs:
   comment:
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      (github.event.workflow_run.conclusion == 'success' ||
+       github.event.workflow_run.conclusion == 'failure')
     concurrency:
       group: danger-pr-comment-${{ github.repository }}-${{ github.event.workflow_run.head_repository.id }}-${{ github.event.workflow_run.head_branch }}-${{ inputs.comment-marker }}
       cancel-in-progress: false
@@ -56,6 +66,7 @@ jobs:
           COMMENT_MARKER: ${{ inputs.comment-marker }}
           COMMENT_TITLE: ${{ inputs.comment-title }}
           COMMENT_EMPTY: ${{ inputs.comment-empty }}
+          BASE_BRANCH: ${{ inputs.base-branch || github.event.repository.default_branch }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN || github.token }}
           script: |
@@ -73,8 +84,80 @@ jobs:
             const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
             const prNumber = report.pr_number;
 
-            if (!prNumber) {
-              core.setFailed('Report did not include pr_number');
+            if (!Number.isSafeInteger(prNumber) || prNumber < 1) {
+              core.setFailed('Danger report must identify a valid pull request');
+              return;
+            }
+
+            const run = context.payload.workflow_run;
+            const repositoryId = context.payload.repository?.id;
+            const headOwner = run.head_repository?.owner?.login;
+            const runCreatedAt = typeof run.created_at === 'string' ? Date.parse(run.created_at) : NaN;
+            if (typeof run.head_sha !== 'string' || !run.head_sha ||
+                typeof run.head_branch !== 'string' || !run.head_branch ||
+                !Number.isSafeInteger(run.head_repository?.id) || run.head_repository.id < 1 ||
+                typeof headOwner !== 'string' || !headOwner ||
+                !Number.isSafeInteger(repositoryId) || repositoryId < 1 ||
+                !Number.isFinite(runCreatedAt) || !process.env.BASE_BRANCH) {
+              core.setFailed('Triggering run is missing required PR matching metadata');
+              return;
+            }
+
+            const matchesHead = pr =>
+              pr.head?.sha === run.head_sha &&
+              pr.head?.ref === run.head_branch &&
+              pr.head?.repo?.id === run.head_repository.id &&
+              pr.base?.repo?.id === repositoryId;
+
+            const pulls = await github.paginate(github.rest.pulls.list, {
+              ...context.repo,
+              state: 'open',
+              head: `${headOwner}:${run.head_branch}`,
+              per_page: 100,
+            });
+            const matches = pulls.filter(matchesHead);
+            if (matches.length === 0) {
+              core.notice(`Skipping report: no current open PR matches source ${headOwner}:${run.head_branch} at ${run.head_sha}`);
+              return;
+            }
+            if (matches.length !== 1) {
+              core.setFailed(`Ambiguous report destination: ${matches.length} open PRs match the run across all bases`);
+              return;
+            }
+            if (matches[0].number !== prNumber) {
+              core.setFailed(`Report claims PR #${prNumber}, but the run resolves to PR #${matches[0].number}`);
+              return;
+            }
+
+            const { data: pr } = await github.rest.pulls.get({
+              ...context.repo,
+              pull_number: matches[0].number,
+            });
+            const prCreatedAt = typeof pr.created_at === 'string' ? Date.parse(pr.created_at) : NaN;
+            if (pr.head?.ref !== run.head_branch ||
+                pr.head?.repo?.id !== run.head_repository.id || pr.base?.repo?.id !== repositoryId) {
+              core.setFailed('Current PR source branch or repository no longer matches the run');
+              return;
+            }
+            if (!Number.isFinite(prCreatedAt) || prCreatedAt > runCreatedAt) {
+              core.setFailed(`PR creation time ${pr.created_at} is invalid or newer than run creation time ${run.created_at}`);
+              return;
+            }
+            if (typeof pr.base?.ref !== 'string' || !pr.base.ref ||
+                (process.env.BASE_BRANCH !== '*' && pr.base.ref !== process.env.BASE_BRANCH)) {
+              core.setFailed(`Current PR base ${pr.base?.ref} does not match allowed base ${process.env.BASE_BRANCH}`);
+              return;
+            }
+            if (!['open', 'closed'].includes(pr.state) || typeof pr.head?.sha !== 'string' || !pr.head.sha) {
+              core.setFailed('Current PR is missing a valid open/closed state or head SHA');
+              return;
+            }
+            if (pr.state === 'closed') {
+              core.notice(`Skipping report for PR #${prNumber}: expected open state, current state is closed`);
+              return;
+            }
+            if (pr.head.sha !== run.head_sha) {
+              core.notice(`Skipping report for PR #${prNumber}: run head ${run.head_sha}, current head ${pr.head.sha}`);
               return;
             }
 
