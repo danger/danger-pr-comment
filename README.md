@@ -88,7 +88,7 @@ on:
 
 jobs:
   danger:
-    uses: danger/danger-pr-comment/.github/workflows/danger-run.yml@v0.2.0
+    uses: danger/danger-pr-comment/.github/workflows/danger-run.yml@v0.3.0
     secrets: inherit
     with:
       ruby-version: '3.4'
@@ -111,7 +111,7 @@ permissions:
 
 jobs:
   comment:
-    uses: danger/danger-pr-comment/.github/workflows/danger-comment.yml@v0.2.0
+    uses: danger/danger-pr-comment/.github/workflows/danger-comment.yml@v0.3.0
     secrets: inherit
 ```
 
