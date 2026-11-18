@@ -13,8 +13,10 @@ Gem::Specification.new do |s|
   s.description = 'Shared Dangerfile that exports a JSON report for posting Danger results as a PR comment.'
   s.license     = 'MIT'
 
-  s.files         = Dir['Dangerfile', 'LICENSE.txt', 'README.md', 'lib/**/*.rb']
+  s.files         = Dir['Dangerfile', 'LICENSE.txt', 'README.md', 'lib/**/*.rb', 'bin/*']
   s.require_paths = ['lib']
+  s.bindir        = 'bin'
+  s.executables   = ['danger-pr-comment']
 
   s.add_dependency 'danger', '~> 9'
   s.metadata['rubygems_mfa_required'] = 'true'

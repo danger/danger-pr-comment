@@ -1,0 +1,25 @@
+danger_status: 0
+report:
+  pr_number: 7
+  errors: []
+  warnings: [Ignored by empty override]
+  messages: []
+  markdowns: []
+  rendered_markdown: &markdown |
+    ### Warnings
+    - Ignored by empty override
+preview:
+  status: 0
+  stdout: *markdown
+summary: |+
+  ## Danger Report
+
+  ### Warnings
+  - Ignored by empty override
+
+comment_report: comment-report.json
+comment_inputs:
+  comment-empty: false
+comment:
+  method: null
+  body: null

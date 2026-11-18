@@ -1,0 +1,67 @@
+danger_status: 1
+report:
+  pr_number: 42
+  errors: [Consumer error]
+  warnings: [Consumer warning]
+  messages: [Consumer message]
+  markdowns:
+    - |-
+      **Consumer details**
+
+      Raw Markdown.
+  rendered_markdown: &markdown |
+    ### Errors
+    - Consumer error
+
+    ### Warnings
+    - Consumer warning
+
+    ### Messages
+    - Consumer message
+
+    ### Markdowns
+    **Consumer details**
+
+    Raw Markdown.
+preview:
+  status: 0
+  stdout: *markdown
+summary: |+
+  Earlier summary
+  ## Danger Report
+
+  ### Errors
+  - Consumer error
+
+  ### Warnings
+  - Consumer warning
+
+  ### Messages
+  - Consumer message
+
+  ### Markdowns
+  **Consumer details**
+
+  Raw Markdown.
+
+comment:
+  method: createComment
+  issue_number: 42
+  body: |-
+    <!-- danger-report -->
+    ## Danger Report
+    ### Errors
+    - Consumer error
+
+    ### Warnings
+    - Consumer warning
+
+    ### Messages
+    - Consumer message
+
+    ### Markdowns
+    **Consumer details**
+
+    Raw Markdown.
+
+    [View run](https://github.com/danger/example/actions/runs/123)

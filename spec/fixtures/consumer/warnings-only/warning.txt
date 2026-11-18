@@ -1,0 +1,2 @@
+Check `consumer.rb`.
+Keep **this detail**.

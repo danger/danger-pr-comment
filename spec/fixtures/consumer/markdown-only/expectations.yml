@@ -1,0 +1,48 @@
+danger_status: 0
+report:
+  pr_number: 99
+  errors: []
+  warnings: []
+  messages: []
+  markdowns:
+    - |-
+      | Item | Result |
+      | --- | --- |
+      | Preview | **Ready** |
+    - More details.
+  rendered_markdown: &markdown |
+    ### Markdowns
+    | Item | Result |
+    | --- | --- |
+    | Preview | **Ready** |
+
+    More details.
+preview:
+  status: 0
+  stdout: *markdown
+summary: |+
+  ## Danger Report
+
+  ### Markdowns
+  | Item | Result |
+  | --- | --- |
+  | Preview | **Ready** |
+
+  More details.
+
+comment_inputs:
+  comment-empty: false
+comment:
+  method: createComment
+  issue_number: 99
+  body: |-
+    <!-- danger-report -->
+    ## Danger Report
+    ### Markdowns
+    | Item | Result |
+    | --- | --- |
+    | Preview | **Ready** |
+
+    More details.
+
+    [View run](https://github.com/danger/example/actions/runs/123)

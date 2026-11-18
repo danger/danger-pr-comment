@@ -1,0 +1,27 @@
+danger_status: 0
+report:
+  pr_number: 7
+  errors: []
+  warnings: []
+  messages: []
+  markdowns: []
+  rendered_markdown: &markdown |
+    No issues found.
+preview:
+  status: 0
+  stdout: *markdown
+summary: |+
+  ## Danger Report
+
+  No issues found.
+
+comment_report: comment-report.json
+comment:
+  method: createComment
+  issue_number: 7
+  body: |-
+    <!-- danger-report -->
+    ## Danger Report
+    - Custom finding without a trailing newline
+
+    [View run](https://github.com/danger/example/actions/runs/123)

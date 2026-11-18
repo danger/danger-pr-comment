@@ -1,0 +1,35 @@
+danger_status: 0
+report:
+  pr_number: 9
+  errors: []
+  warnings:
+    - |-
+      Check `consumer.rb`.
+      Keep **this detail**.
+  messages: []
+  markdowns: []
+  rendered_markdown: &markdown |
+    ### Warnings
+    - Check `consumer.rb`.
+    Keep **this detail**.
+preview:
+  status: 0
+  stdout: *markdown
+summary: |+
+  ## Danger Report
+
+  ### Warnings
+  - Check `consumer.rb`.
+  Keep **this detail**.
+
+comment:
+  method: createComment
+  issue_number: 9
+  body: |-
+    <!-- danger-report -->
+    ## Danger Report
+    ### Warnings
+    - Check `consumer.rb`.
+    Keep **this detail**.
+
+    [View run](https://github.com/danger/example/actions/runs/123)

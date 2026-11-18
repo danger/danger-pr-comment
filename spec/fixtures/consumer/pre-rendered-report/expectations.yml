@@ -1,0 +1,29 @@
+danger_status: 0
+report:
+  pr_number: 7
+  errors: []
+  warnings: [Ignored by comment override]
+  messages: []
+  markdowns: []
+  rendered_markdown: &markdown |
+    ### Warnings
+    - Ignored by comment override
+preview:
+  status: 0
+  stdout: *markdown
+summary: |+
+  ## Danger Report
+
+  ### Warnings
+  - Ignored by comment override
+
+comment_report: comment-report.json
+comment:
+  method: createComment
+  issue_number: 7
+  body: |-
+    <!-- danger-report -->
+    ## Danger Report
+    **Pre-rendered report**
+
+    [View run](https://github.com/danger/example/actions/runs/123)

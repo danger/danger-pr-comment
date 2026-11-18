@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- [#23](https://github.com/danger/danger-pr-comment/pull/23): Add a shared Markdown renderer, a packaged local preview command, automatic Actions summaries, and fixture-driven installed-gem consumer scenarios; use the effective rendered body for empty-comment decisions and preserve spacing before the run link - [@dblock](https://github.com/dblock).
 - [#22](https://github.com/danger/danger-pr-comment/pull/22): Add a default-true `comment-empty` input to skip new empty-report comments when disabled while still updating existing reports - [@dblock](https://github.com/dblock).
 
 ### Fixed
