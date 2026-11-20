@@ -75,6 +75,39 @@ RSpec.describe 'Empty report comments' do
     expect(calls.last.fetch('body')).not_to include('Old warnings')
   end
 
+  it 'deletes an existing bot report when configured and findings clear' do
+    inputs['comment-empty'] = false
+    inputs['delete-empty'] = true
+    calls = execute_workflow(comments: [
+                               { id: 9, user: { login: 'contributor', type: 'User' },
+                                 body: "<!-- danger-report -->\nDiscussion" },
+                               { id: 10, user: { login: 'github-actions[bot]', type: 'Bot' },
+                                 body: "<!-- danger-report -->\nOld warnings" }
+                             ])
+
+    expect(calls.last).to include('method' => 'deleteComment', 'comment_id' => 10)
+  end
+
+  it 'does not create an empty report when deletion and empty-comment suppression are enabled' do
+    inputs['comment-empty'] = false
+    inputs['delete-empty'] = true
+
+    expect(execute_workflow.map { |call| call.fetch('method') }).to eq(['listComments'])
+  end
+
+  it 'updates an existing report with findings when deletion is enabled' do
+    inputs['delete-empty'] = true
+    fixture[:report][:warnings] = ['A finding']
+    calls = execute_workflow(comments: [{
+                               id: 10,
+                               user: { login: 'github-actions[bot]', type: 'Bot' },
+                               body: "<!-- danger-report -->\nOld warnings"
+                             }])
+
+    expect(calls.last).to include('method' => 'updateComment', 'comment_id' => 10)
+    expect(calls.last.fetch('body')).to include('A finding')
+  end
+
   ['', " \n\t", "No issues found.\n"].each do |markdown|
     it "suppresses a new comment for empty Markdown #{markdown.inspect} despite findings in the arrays" do
       inputs['comment-empty'] = false

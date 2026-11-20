@@ -139,7 +139,7 @@ Comments are sticky: the commenter searches every page of PR comments and update
 
 Writers sharing the caller repository, source repository ID, head branch, and comment marker are serialized without cancelling an in-progress writer. This prevents simultaneous runs for the same PR source from both creating a comment, including for fork contributions. Different markers remain independent.
 
-By default, the commenter posts even when the report is empty. Set `comment-empty: false` in the commenter job's `with` inputs to avoid creating comments for empty reports. The effective report body is empty when it is blank/whitespace or, after trimming whitespace, exactly the renderer's `No issues found.` message; this is independent of whether the Danger command succeeded. For legacy reports, the body comes from the errors, warnings, messages, and markdown arrays. Existing report comments are still updated to "No issues found" when findings clear, including when a Markdown override is blank, so previous results do not remain stale.
+By default, the commenter posts even when the report is empty. Set `comment-empty: false` in the commenter job's `with` inputs to avoid creating comments for empty reports. The effective report body is empty when it is blank/whitespace or, after trimming whitespace, exactly the renderer's `No issues found.` message; this is independent of whether the Danger command succeeded. For legacy reports, the body comes from the errors, warnings, messages, and markdown arrays. Existing report comments are updated to "No issues found" when findings clear, including when a Markdown override is blank, so previous results do not remain stale. Set `delete-empty: true` to delete an existing report comment instead; combine it with `comment-empty: false` to avoid empty comments entirely.
 
 ### JSON Report Output
 
@@ -199,7 +199,8 @@ The `Danger Comment` workflow requires explicit permissions. Reusable workflows 
 - `report-file`: Report filename inside the artifact (default `danger-report.json`).
 - `comment-title`: Heading for the PR comment (default `Danger Report`).
 - `comment-marker`: Marker string used to update the comment (default `<!-- danger-report -->`).
-- `comment-empty`: Create comments for empty reports (boolean, default `true`). Set to `false` to skip creating empty-report comments; existing report comments are always updated.
+- `comment-empty`: Create comments for empty reports (boolean, default `true`). Set to `false` to skip creating empty-report comments.
+- `delete-empty`: Delete an existing report comment when findings clear (boolean, default `false`). Otherwise existing comments are updated even when empty comments are disabled.
 - `base-branch`: Allowed current PR target (default: repository default branch). A literal value is a hard restriction; `"*"` explicitly allows changing stacked targets within the caller repository. Configure this in the trusted caller, not from report data. See [Security](SECURITY.md#allowed-target-branches) for details.
 
 ## Development

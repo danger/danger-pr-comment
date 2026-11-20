@@ -24,10 +24,15 @@ on:
         type: string
         default: "<!-- danger-report -->"
       comment-empty:
-        description: "Create comments for empty reports. Existing report comments are always updated."
+        description: "Create comments for empty reports."
         required: false
         type: boolean
         default: true
+      delete-empty:
+        description: "Delete an existing report comment when the report is empty."
+        required: false
+        type: boolean
+        default: false
       base-branch:
         description: "Allowed current PR base. Empty uses the repository default; '*' explicitly allows any base in this repository."
         required: false
@@ -66,6 +71,7 @@ jobs:
           COMMENT_MARKER: ${{ inputs.comment-marker }}
           COMMENT_TITLE: ${{ inputs.comment-title }}
           COMMENT_EMPTY: ${{ inputs.comment-empty }}
+          DELETE_EMPTY: ${{ inputs.delete-empty }}
           BASE_BRANCH: ${{ inputs.base-branch || github.event.repository.default_branch }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN || github.token }}
@@ -201,7 +207,13 @@ jobs:
               comment.body?.startsWith(`${marker}\n`)
             );
 
-            if (existing) {
+            if (existing && empty && process.env.DELETE_EMPTY === 'true') {
+              await github.rest.issues.deleteComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+              });
+            } else if (existing) {
               await github.rest.issues.updateComment({
                 owner,
                 repo,
