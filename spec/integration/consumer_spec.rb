@@ -68,9 +68,9 @@ RSpec.describe DangerPrComment, :integration do
     command('git', '-c', 'user.name=Consumer', '-c', 'user.email=consumer@example.test', '-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'Initial commit')
   end
 
-  def command(*args, expected_status: 0, stdin_data: nil)
+  def command(*args, expected_status: 0, stdin_data: nil, env: {})
     stdout, stderr, status = Bundler.with_unbundled_env do
-      Open3.capture3(environment, *args, chdir: workspace, stdin_data: stdin_data)
+      Open3.capture3(environment.merge(env), *args, chdir: workspace, stdin_data: stdin_data)
     end
     expect(status.exitstatus).to eq(expected_status), "#{args.join(' ')}\n#{stdout}\n#{stderr}"
     [stdout, stderr]
@@ -127,6 +127,103 @@ RSpec.describe DangerPrComment, :integration do
     return expect(File).not_to exist(path) unless expectations['summary']
 
     expect(File.read(path)).to eq(expectations.fetch('summary'))
+  end
+
+  context 'with producer diff defaults' do
+    let(:scenario) { File.join(root, 'spec/fixtures/consumer/empty') }
+    let(:expectations) { {} }
+
+    before do
+      File.write(File.join(workspace, 'Dangerfile'), <<~RUBY)
+        danger.import_dangerfile(gem: 'danger-pr-comment')
+        message git.modified_files.to_a.sort.inspect
+      RUBY
+      %w[fork.txt release.txt].each { |path| File.write(File.join(workspace, path), "original\n") }
+      commit_fixture
+      common, = command('git', 'rev-parse', 'HEAD')
+      command('git', 'checkout', '-b', 'release')
+      File.write(File.join(workspace, 'release.txt'), "target-only change\n")
+      commit_fixture
+      base, = command('git', 'rev-parse', 'HEAD')
+      command('git', 'checkout', '-b', 'fork-only', common.strip)
+      File.write(File.join(workspace, 'fork.txt'), "contribution\n")
+      commit_fixture
+      head, = command('git', 'rev-parse', 'HEAD')
+      command('git', 'checkout', 'release')
+      command('git', '-c', 'user.name=Consumer', '-c', 'user.email=consumer@example.test', '-c', 'commit.gpgsign=false',
+              'merge', '--no-ff', 'fork-only', '-m', 'Synthetic PR merge')
+      command('git', 'init', '--bare', 'base.git')
+      command('git', 'remote', 'add', 'origin', File.join(workspace, 'base.git'))
+      command('git', 'push', 'origin', "#{common.strip}:refs/heads/main", "#{base.strip}:refs/heads/release",
+              "#{head.strip}:refs/pull/7/head", 'HEAD:refs/pull/7/merge')
+      event = { repository: { default_branch: 'main' },
+                pull_request: { number: 7, base: { ref: 'release', sha: base.strip }, head: { ref: 'fork-only', sha: head.strip } } }
+      File.write(environment.fetch('GITHUB_EVENT_PATH'), JSON.generate(event))
+    end
+
+    def commit_fixture
+      command('git', 'add', '--', 'Dangerfile', 'fork.txt', 'release.txt')
+      command('git', '-c', 'user.name=Consumer', '-c', 'user.email=consumer@example.test', '-c', 'commit.gpgsign=false',
+              'commit', '--quiet', '-m', 'Fixture change')
+    end
+
+    def producer_workflow
+      YAML.load_file(File.join(root, '.github/workflows/danger-run.yml'))
+    end
+
+    def producer_inputs(arguments)
+      workflow = producer_workflow
+      inputs = workflow.fetch('on', workflow[true]).fetch('workflow_call').fetch('inputs')
+                       .transform_values { |input| input.fetch('default', '') }
+      inputs['danger-args'] = arguments unless arguments.nil?
+      inputs
+    end
+
+    def producer_fixture(arguments)
+      step = producer_workflow.fetch('jobs').fetch('danger').fetch('steps').find { |item| item['id'] == 'danger' }
+      {
+        event: JSON.parse(File.read(environment.fetch('GITHUB_EVENT_PATH'))), inputs: producer_inputs(arguments), run: step.fetch('run'),
+        environment: step.fetch('env').select { |key, _value| key.start_with?('DANGER_LOCAL_') }
+      }
+    end
+
+    def render_producer(arguments)
+      stdout, = command('node', File.join(root, 'spec/fixtures/render_producer_workflow.js'), stdin_data: JSON.generate(producer_fixture(arguments)))
+      JSON.parse(stdout)
+    end
+
+    def run_producer(arguments: nil)
+      rendered = render_producer(arguments)
+      command('bash', '-e', '-c', rendered.fetch('run'), env: rendered.fetch('environment'))
+      JSON.parse(File.read(environment.fetch('DANGER_REPORT_PATH')))
+    end
+
+    it 'analyzes a fork against a non-default target rather than the synthetic merge' do
+      remote_heads, = command('git', 'ls-remote', '--heads', 'origin')
+      expect(remote_heads).not_to include('fork-only', 'refs/heads/master')
+
+      expect(run_producer.fetch('messages')).to eq(['["fork.txt"]'])
+      expect(File.read(environment.fetch('GITHUB_STEP_SUMMARY'))).to include('fork.txt')
+    end
+
+    it 'preserves explicit diff arguments and custom Dangerfile paths' do
+      FileUtils.cp(File.join(workspace, 'Dangerfile'), File.join(workspace, 'CustomDangerfile'))
+
+      report = run_producer(arguments: 'dry_run --dangerfile=CustomDangerfile --base=release --head=release')
+
+      expect(report.fetch('messages')).to eq(['[]'])
+    end
+
+    %w[main master].each do |branch|
+      it "uses the #{branch} repository default when PR endpoints are absent" do
+        command('git', 'update-ref', "refs/remotes/origin/#{branch}", 'main')
+        other_branch = branch == 'main' ? 'master' : 'main'
+        command('git', 'update-ref', "refs/remotes/origin/#{other_branch}", 'release')
+        File.write(environment.fetch('GITHUB_EVENT_PATH'), JSON.generate(repository: { default_branch: branch }, pull_request: { number: 7 }))
+
+        expect(run_producer.fetch('messages')).to eq(['["fork.txt", "release.txt"]'])
+      end
+    end
   end
 
   Dir[File.expand_path('../fixtures/consumer/*/expectations.yml', __dir__)].each do |path|

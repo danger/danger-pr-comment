@@ -68,6 +68,8 @@ jobs:
           DANGER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN || github.token }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || github.token }}
           DANGER_REPORT_PATH: ${{ runner.temp }}/${{ inputs.report-file }}
+          DANGER_LOCAL_BASE: ${{ github.event.pull_request.base.sha || format('origin/{0}', github.event.repository.default_branch) }}
+          DANGER_LOCAL_HEAD: ${{ github.event.pull_request.head.sha || 'HEAD' }}
         run: bundle exec danger ${{ inputs.danger-args }}
 
       - name: Upload Danger report

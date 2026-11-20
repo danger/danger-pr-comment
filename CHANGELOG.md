@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- [#27](https://github.com/danger/danger-pr-comment/pull/27): Default Danger's diff to the PR event's exact base/head commits, including fork contributions and non-default targets, with the repository's default branch as the local fallback, while preserving explicit argument overrides - [@dblock](https://github.com/dblock).
+
 ## [0.3.0] - 2026-11-18
 
 ### Added
