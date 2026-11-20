@@ -22,7 +22,8 @@ const github = { rest: { pulls: {
 }, issues: {
   listComments: record('listComments', input.comments),
   createComment: record('createComment'),
-  updateComment: record('updateComment')
+  updateComment: record('updateComment'),
+  deleteComment: record('deleteComment')
 } } };
 github.paginate = async (method, args) => (await method(args)).data;
 const fs = { existsSync: () => true, readFileSync: () => JSON.stringify(input.report) };

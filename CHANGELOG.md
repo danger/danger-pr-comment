@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- [#28](https://github.com/danger/danger-pr-comment/pull/28): Optionally delete an existing report comment when its findings clear - [@dblock](https://github.com/dblock).
+
 ## [0.3.0] - 2026-11-18
 
 ### Added
