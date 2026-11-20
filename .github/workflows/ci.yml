@@ -9,6 +9,6 @@ jobs:
     uses: ./.github/workflows/danger-run.yml
     with:
       ruby-version: "3.3"
-      danger-args: "--dangerfile=Dangerfile.local dry_run --base=${{ github.event.pull_request.base.sha }} --head=${{ github.event.pull_request.head.sha }}"
+      danger-args: "--dangerfile=Dangerfile.local dry_run"
       report-artifact-name: ci-danger-report
     secrets: inherit
